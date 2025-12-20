@@ -37,9 +37,10 @@ sudo apt install nginx certbot python3-certbot-nginx
 sudo nano /etc/nginx/sites-available/crm.singhjitech.com
 ```
 
-Paste this configuration:
+Paste this configuration (or copy from `nginx.host.conf`):
 
 ```nginx
+# Redirect HTTP to HTTPS
 server {
     listen 80;
     server_name crm.singhjitech.com;
@@ -53,6 +54,7 @@ server {
     }
 }
 
+# HTTPS Server
 server {
     listen 443 ssl http2;
     server_name crm.singhjitech.com;
@@ -66,6 +68,8 @@ server {
 
     client_max_body_size 50M;
 
+    # IMPORTANT: Only proxy to localhost:80 (frontend container)
+    # The frontend container's nginx (nginx.conf) handles routing to backend
     location / {
         proxy_pass http://localhost:80;
         proxy_http_version 1.1;
@@ -81,6 +85,8 @@ server {
     }
 }
 ```
+
+**Note:** Do NOT use Docker service names (like `backend:5000`) in the host nginx config. Only use `localhost:80` to proxy to the frontend container.
 
 ```bash
 # Enable site

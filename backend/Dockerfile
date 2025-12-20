@@ -45,11 +45,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
-# Copy application code
+# Copy application code (includes prisma directory)
 COPY --chown=nodejs:nodejs backend/ ./
-
-# Copy Prisma schema (needed for migrations)
-COPY --chown=nodejs:nodejs backend/prisma ./prisma
 
 # Switch to non-root user
 USER nodejs

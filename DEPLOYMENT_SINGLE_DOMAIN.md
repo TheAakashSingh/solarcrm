@@ -94,7 +94,9 @@ Create Nginx configuration:
 sudo nano /etc/nginx/sites-available/crm.singhjitech.com
 ```
 
-Add this configuration:
+**IMPORTANT:** The host nginx should ONLY proxy to the Docker frontend container. Do NOT try to use Docker service names like `backend:5000` - those only work inside Docker containers.
+
+Copy this configuration (or see `nginx.host.conf` file in your project):
 
 ```nginx
 # Redirect HTTP to HTTPS
@@ -136,7 +138,8 @@ server {
     # Client body size (for file uploads)
     client_max_body_size 50M;
 
-    # Proxy to Docker frontend container (which handles internal routing)
+    # Proxy to Docker frontend container on localhost:80
+    # The frontend container's nginx (nginx.conf) handles routing to backend
     location / {
         proxy_pass http://localhost:80;
         proxy_http_version 1.1;
