@@ -14,6 +14,7 @@ coverage
 .gitignore
 README.md
 docker-compose*.yml
-Dockerfile
-nginx.conf
-# Don't ignore backend/ - we need it for the backend Docker build
+# Don't ignore these - needed for Docker builds:
+# Dockerfile (needed for frontend build)
+# nginx.conf (needed for frontend build)
+# backend/ (needed for backend build)
