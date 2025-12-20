@@ -1,0 +1,507 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  superadmin
+  director
+  salesman
+  designer
+  production
+  purchase
+}
+
+enum EnquiryStatus {
+  Enquiry
+  Design
+  BOQ
+  ReadyForProduction
+  PurchaseWaiting
+  InProduction
+  ProductionComplete
+  Hotdip
+  ReadyForDispatch
+  Dispatched
+}
+
+enum MaterialType {
+  Aluminium
+  GI
+  GP
+  BOS
+}
+
+enum DesignStatus {
+  pending
+  in_progress
+  completed
+}
+
+enum ProductionStep {
+  cutting
+  welding
+  fabrication
+  assembly
+  quality_check
+  packaging
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+}
+
+enum ProductionWorkflowStatus {
+  not_started
+  in_progress
+  completed
+}
+
+enum DispatchStatus {
+  pending
+  dispatched
+  delivered
+}
+
+enum CommunicationType {
+  call
+  email
+  meeting
+  note
+}
+
+enum DocumentType {
+  quotation
+  invoice
+}
+
+enum DocumentStatus {
+  draft
+  pending
+  accepted
+  rejected
+  sent
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password      String
+  role          UserRole @default(salesman)
+  avatar        String?
+  workflowStatus Json?   // Array of EnquiryStatus
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  enquiriesCreated     Enquiry[]           @relation("EnquiryCreatedBy")
+  enquiriesAssigned    Enquiry[]           @relation("EnquiryAssignedTo")
+  designWorks          DesignWork[]
+  designAttachments    DesignAttachment[]
+  communicationLogs    CommunicationLog[]
+  productionWorkflows  ProductionWorkflow[]
+  productionTasks      ProductionTask[]
+  dispatchWorks        DispatchWork[]
+  statusHistories      EnquiryStatusHistory[]
+  quotationsCreated    Quotation[]
+  invoicesCreated      Invoice[]
+  smtpConfigsCreated   SmtpConfig[]  @relation("SmtpConfigCreator")
+
+  @@index([email])
+  @@index([role])
+}
+
+model Client {
+  id            String   @id @default(uuid())
+  clientName    String
+  email         String
+  contactNo     String
+  contactPerson String
+  address       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  enquiries     Enquiry[]
+  quotations    Quotation[]
+  invoices      Invoice[]
+
+  @@index([email])
+}
+
+model Enquiry {
+  id                  String        @id @default(uuid())
+  enquiryNum          String        @unique
+  orderNumber         String?
+  clientId            String
+  materialType        MaterialType
+  enquiryDetail       String        @db.Text
+  enquiryBy           String        // User ID of salesman
+  enquiryAmount       Float
+  purchaseDetail      String?       @db.Text
+  enquiryDate         DateTime      @default(now())
+  orderDate           DateTime?
+  expectedDispatchDate DateTime?
+  status              EnquiryStatus @default(Enquiry)
+  currentAssignedPerson String
+  workAssignedDate    DateTime      @default(now())
+  deliveryAddress     String        @db.Text
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  client              Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  enquiryByUser       User          @relation("EnquiryCreatedBy", fields: [enquiryBy], references: [id])
+  assignedUser        User          @relation("EnquiryAssignedTo", fields: [currentAssignedPerson], references: [id])
+  statusHistory       EnquiryStatusHistory[]
+  designWork          DesignWork?
+  designAttachments   DesignAttachment[]
+  communicationLogs   CommunicationLog[]
+  productionWorkflow  ProductionWorkflow?
+  dispatchWork        DispatchWork?
+  quotations          Quotation[]
+  invoices            Invoice[]
+
+  @@index([enquiryNum])
+  @@index([status])
+  @@index([enquiryBy])
+  @@index([currentAssignedPerson])
+  @@index([clientId])
+}
+
+model EnquiryStatusHistory {
+  id                  String        @id @default(uuid())
+  enquiryId           String
+  status              EnquiryStatus
+  statusChangedDateTime DateTime    @default(now())
+  assignedPerson      String
+  note                String        @db.Text
+  createdAt           DateTime      @default(now())
+
+  // Relations
+  enquiry             Enquiry       @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  assignedPersonUser  User          @relation(fields: [assignedPerson], references: [id])
+
+  @@index([enquiryId])
+  @@index([status])
+}
+
+model DesignWork {
+  id                String        @id @default(uuid())
+  enquiryId         String        @unique
+  designerId        String
+  designerNotes     String        @db.Text
+  clientRequirements String       @db.Text
+  designStatus      DesignStatus  @default(pending)
+  completedAt       DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relations
+  enquiry           Enquiry       @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  designer          User          @relation(fields: [designerId], references: [id])
+
+  @@index([enquiryId])
+  @@index([designerId])
+}
+
+model DesignAttachment {
+  id          String   @id @default(uuid())
+  enquiryId   String
+  fileName    String
+  fileUrl     String
+  fileType    String
+  uploadedBy  String
+  uploadedAt  DateTime @default(now())
+
+  // Relations
+  enquiry     Enquiry  @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id])
+
+  @@index([enquiryId])
+}
+
+model CommunicationLog {
+  id                String            @id @default(uuid())
+  enquiryId         String
+  loggedBy          String
+  communicationType CommunicationType
+  subject           String
+  message           String            @db.Text
+  communicationDate DateTime          @default(now())
+  clientResponse    String?           @db.Text
+  createdAt         DateTime          @default(now())
+
+  // Relations
+  enquiry           Enquiry           @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  logger            User              @relation(fields: [loggedBy], references: [id])
+
+  @@index([enquiryId])
+  @@index([loggedBy])
+}
+
+model ProductionWorkflow {
+  id          String                    @id @default(uuid())
+  enquiryId   String                    @unique
+  productionLead String
+  status      ProductionWorkflowStatus  @default(not_started)
+  currentStep ProductionStep?
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String                    @db.Text @default("")
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  // Relations
+  enquiry     Enquiry                   @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  lead        User                      @relation(fields: [productionLead], references: [id])
+  tasks       ProductionTask[]
+
+  @@index([enquiryId])
+  @@index([productionLead])
+}
+
+model ProductionTask {
+  id          String        @id @default(uuid())
+  workflowId  String
+  enquiryId   String
+  step        ProductionStep
+  assignedTo  String
+  status      TaskStatus    @default(pending)
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String        @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  workflow    ProductionWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  assignee    User              @relation(fields: [assignedTo], references: [id])
+
+  @@index([workflowId])
+  @@index([enquiryId])
+  @@index([assignedTo])
+}
+
+model DispatchWork {
+  id                    String          @id @default(uuid())
+  enquiryId             String          @unique
+  dispatchAssignedTo    String
+  trackingNumber        String?
+  dispatchDate          DateTime?
+  estimatedDeliveryDate DateTime?
+  status                DispatchStatus  @default(pending)
+  notes                 String          @db.Text
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  // Relations
+  enquiry               Enquiry         @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  assignee              User            @relation(fields: [dispatchAssignedTo], references: [id])
+
+  @@index([enquiryId])
+  @@index([dispatchAssignedTo])
+}
+
+model Quotation {
+  id            String          @id @default(uuid())
+  number        String          @unique
+  enquiryId     String
+  clientId      String
+  createdBy     String
+  date          DateTime        @default(now())
+  validUntil    DateTime?
+  status        DocumentStatus  @default(draft)
+  
+  // New fields for BOQ format
+  orderNo       String?
+  nosOfModule   String?
+  projectCapacity String?
+  noOfTable     Int?
+  
+  // BOQ Summary fields
+  totalWeight   Float?          @default(0)
+  purchaseRate  Float?          @default(0)
+  weightIncreaseAfterHDG Float? @default(0)
+  costing       Float?          @default(0)
+  totalWeightAfterHotDip Float? @default(0)
+  ratePerKg     Float?          @default(0)
+  boqGrossProfit Float?         @default(0)
+  boqProfitPercent Float?       @default(0)
+  totalBoqAmount Float?         @default(0)
+  
+  // Hardware Summary fields
+  totalHardwareCost Float?      @default(0)
+  hardwarePurchaseTotal Float?  @default(0)
+  hardwareGrossProfit Float?    @default(0)
+  totalStructurePlusHardware Float? @default(0)
+  gst           Float?          @default(0)
+  totalGrossProfit Float?       @default(0)
+  totalProfitPercent Float?     @default(0)
+  
+  // Legacy fields (kept for backward compatibility)
+  subtotal      Float           @default(0)
+  discount      Float           @default(0)
+  discountAmount Float          @default(0)
+  taxRate       Float           @default(18)
+  taxAmount     Float           @default(0)
+  grandTotal    Float           @default(0)
+  notes         String?         @db.Text
+  terms         String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  enquiry       Enquiry         @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  client        Client          @relation(fields: [clientId], references: [id])
+  creator       User            @relation(fields: [createdBy], references: [id])
+  lineItems     QuotationLineItem[]
+  boqItems      QuotationBoqItem[]
+  hardwareItems QuotationHardwareItem[]
+  invoices      Invoice[]       @relation("QuotationInvoices")
+
+  @@index([enquiryId])
+  @@index([clientId])
+  @@index([number])
+  @@index([status])
+}
+
+model QuotationLineItem {
+  id            String    @id @default(uuid())
+  quotationId   String
+  description   String    @db.Text
+  quantity      Float
+  unit          String
+  rate          Float
+  amount        Float
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+model QuotationBoqItem {
+  id            String    @id @default(uuid())
+  quotationId   String
+  srNo          Int
+  descriptions  String    @db.Text
+  type          String?
+  specification String?   @db.Text
+  lengthMm      Float?
+  requiredQty   Float     @default(0)
+  totalWeight   Float?    @default(0)
+  weightPerPec  Float?    @default(0)
+  qtyPerTable   Float?    @default(0)
+  weightPerTable Float?   @default(0)
+  unitWeight    Float?    @default(0)
+  purchaseRate  Float?    @default(0)
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+model QuotationHardwareItem {
+  id            String    @id @default(uuid())
+  quotationId   String
+  srNo          Int
+  descriptions  String    @db.Text
+  quantity      Float     @default(0)
+  rate          Float     @default(0)
+  amount        Float     @default(0)
+  purchaseRate  Float?    @default(0)
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+model Invoice {
+  id            String          @id @default(uuid())
+  number        String          @unique
+  enquiryId     String
+  quotationId   String?
+  clientId      String
+  createdBy     String
+  date          DateTime        @default(now())
+  dueDate       DateTime?
+  status        DocumentStatus  @default(draft)
+  subtotal      Float           @default(0)
+  discount      Float           @default(0)
+  discountAmount Float          @default(0)
+  taxRate       Float           @default(18)
+  taxAmount     Float           @default(0)
+  grandTotal    Float           @default(0)
+  notes         String?         @db.Text
+  terms         String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  enquiry       Enquiry         @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  quotation     Quotation?      @relation("QuotationInvoices", fields: [quotationId], references: [id])
+  client        Client          @relation(fields: [clientId], references: [id])
+  creator       User            @relation(fields: [createdBy], references: [id])
+  lineItems     InvoiceLineItem[]
+
+  @@index([enquiryId])
+  @@index([clientId])
+  @@index([number])
+  @@index([status])
+}
+
+model InvoiceLineItem {
+  id            String    @id @default(uuid())
+  invoiceId     String
+  description   String    @db.Text
+  quantity      Float
+  unit          String
+  rate          Float
+  amount        Float
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+model SmtpConfig {
+  id          String   @id @default(uuid())
+  name        String
+  host        String
+  port        Int
+  secure      Boolean  @default(true)  // true for 465, false for other ports
+  user        String
+  password    String   @db.Text
+  fromEmail   String
+  fromName    String
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+
+  // Relations
+  creator     User     @relation("SmtpConfigCreator", fields: [createdBy], references: [id])
+
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([createdBy])
+}

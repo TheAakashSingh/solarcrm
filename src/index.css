@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(203 213 225);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(148 163 184);
+  }
+}
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 222 47% 20%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 32 95% 44%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 47% 20%;
+
+    --radius: 0.5rem;
+
+    /* Status Colors */
+    --status-enquiry: 220 70% 50%;
+    --status-design: 280 70% 50%;
+    --status-boq: 200 70% 50%;
+    --status-ready-production: 150 70% 40%;
+    --status-purchase: 35 90% 50%;
+    --status-in-production: 180 60% 45%;
+    --status-production-complete: 160 70% 40%;
+    --status-hotdip: 340 70% 50%;
+    --status-ready-dispatch: 120 60% 40%;
+    --status-dispatched: 142 70% 35%;
+
+    /* Sidebar */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 32 95% 44%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 18%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 30% 20%;
+    --sidebar-ring: 32 95% 44%;
+
+    /* Chart colors */
+    --chart-1: 222 47% 20%;
+    --chart-2: 32 95% 44%;
+    --chart-3: 150 70% 40%;
+    --chart-4: 200 70% 50%;
+    --chart-5: 340 70% 50%;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 32 95% 50%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 222 30% 20%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 30% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 32 95% 50%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 30% 20%;
+    --input: 222 30% 20%;
+    --ring: 32 95% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border;
+  }
+
+  /* Modern status colors - Zoho/Pipedrive style */
+  .status-enquiry {
+    @apply bg-blue-50 text-blue-700 border-blue-200;
+  }
+
+  .status-design {
+    @apply bg-purple-50 text-purple-700 border-purple-200;
+  }
+
+  .status-boq {
+    @apply bg-indigo-50 text-indigo-700 border-indigo-200;
+  }
+
+  .status-ready-production {
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+  }
+
+  .status-purchase {
+    @apply bg-amber-50 text-amber-700 border-amber-200;
+  }
+
+  .status-in-production {
+    @apply bg-cyan-50 text-cyan-700 border-cyan-200;
+  }
+
+  .status-production-complete {
+    @apply bg-teal-50 text-teal-700 border-teal-200;
+  }
+
+  .status-hotdip {
+    @apply bg-rose-50 text-rose-700 border-rose-200;
+  }
+
+  .status-ready-dispatch {
+    @apply bg-lime-50 text-lime-700 border-lime-200;
+  }
+
+  .status-dispatched {
+    @apply bg-green-50 text-green-700 border-green-200;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:border-accent/20;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors;
+  }
+
+  .nav-link-active {
+    @apply bg-sidebar-accent text-sidebar-foreground font-medium;
+  }
+
+  .data-table-header {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
+  .metric-card {
+    @apply bg-card rounded-xl border p-6 card-hover;
+  }
+
+  .input-focus {
+    @apply focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(203 213 225);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(148 163 184);
+  }
+}
