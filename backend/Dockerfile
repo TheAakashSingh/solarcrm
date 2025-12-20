@@ -1,9 +1,15 @@
 # Backend Dockerfile
 FROM node:20-alpine AS base
 
+# Install OpenSSL for Prisma (required for Prisma to work properly)
+RUN apk add --no-cache openssl1.1-compat
+
 # Build stage - generate Prisma client
 FROM base AS builder
 WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl1.1-compat
 
 # Copy package files
 COPY backend/package*.json ./
@@ -32,6 +38,9 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# Install OpenSSL for Prisma (required for migrations and runtime)
+RUN apk add --no-cache openssl1.1-compat
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs && \
