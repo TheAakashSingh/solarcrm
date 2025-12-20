@@ -32,7 +32,13 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${BACKEND_PORT:-5000}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-solarsync}:${POSTGRES_PASSWORD:-solarsync_password}@postgres:5432/${POSTGRES_DB:-solarsync_db}?schema=public}
+      # Use DATABASE_URL from .env if set, otherwise construct it from individual variables
+      # IMPORTANT: If password contains special characters (@, #, etc.), they must be URL-encoded in DATABASE_URL
+      # @ = %40, # = %23, % = %25, etc.
+      DATABASE_URL: ${DATABASE_URL}
+      # Also pass individual DB variables for debugging
+      POSTGRES_USER: ${POSTGRES_USER:-solarsync}
+      POSTGRES_DB: ${POSTGRES_DB:-solarsync_db}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-https://crm.singhjitech.com}
