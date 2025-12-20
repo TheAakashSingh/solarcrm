@@ -68,10 +68,10 @@ server {
 
     client_max_body_size 50M;
 
-    # IMPORTANT: Only proxy to localhost:80 (frontend container)
+    # IMPORTANT: Proxy to localhost:8080 (frontend container)
     # The frontend container's nginx (nginx.conf) handles routing to backend
     location / {
-        proxy_pass http://localhost:80;
+        proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
