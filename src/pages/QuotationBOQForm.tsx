@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
@@ -57,10 +57,12 @@ export default function QuotationBOQForm() {
   const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const enquiryId = searchParams.get('enquiry');
+  const { id: quotationId } = useParams<{ id?: string }>();
+  const enquiryIdFromParams = searchParams.get('enquiry');
+  const [enquiryId, setEnquiryId] = useState<string | null>(enquiryIdFromParams);
   const [existingEnquiry, setExistingEnquiry] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [savedDocumentId, setSavedDocumentId] = useState<string | null>(null);
+  const [savedDocumentId, setSavedDocumentId] = useState<string | null>(quotationId || null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendEmailDialogOpen, setSendEmailDialogOpen] = useState(false);
   const [smtpConfigs, setSmtpConfigs] = useState<any[]>([]);
@@ -104,14 +106,74 @@ export default function QuotationBOQForm() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        if (enquiryId) {
-          const enquiryRes = await enquiriesAPI.getById(enquiryId);
+        
+        // If quotationId is provided, load quotation first to get enquiryId
+        if (quotationId) {
+          const quotationRes = await quotationsAPI.getById(quotationId);
+          if (quotationRes.success && quotationRes.data) {
+            const existingQuotation = quotationRes.data;
+            setSavedDocumentId(existingQuotation.id);
+            
+            // Get enquiry from quotation
+            const qEnquiryId = existingQuotation.enquiryId || existingQuotation.enquiry_id;
+            if (qEnquiryId) {
+              setEnquiryId(qEnquiryId); // Store enquiryId in state
+              const enquiryRes = await enquiriesAPI.getById(qEnquiryId);
+              if (enquiryRes.success && enquiryRes.data) {
+                setExistingEnquiry(enquiryRes.data);
+              }
+            } else if (existingQuotation.enquiry) {
+              setExistingEnquiry(existingQuotation.enquiry);
+              if (existingQuotation.enquiry.id) {
+                setEnquiryId(existingQuotation.enquiry.id); // Store enquiryId from enquiry object
+              }
+            }
+            
+            // Load existing quotation data
+            if (existingQuotation.orderNo) setOrderNo(existingQuotation.orderNo);
+            if (existingQuotation.nosOfModule) setNosOfModule(existingQuotation.nosOfModule);
+            if (existingQuotation.date) setQuotationDate(format(new Date(existingQuotation.date), 'yyyy-MM-dd'));
+            if (existingQuotation.projectCapacity) setProjectCapacity(existingQuotation.projectCapacity);
+            if (existingQuotation.noOfTable) setNoOfTable(existingQuotation.noOfTable);
+            if (existingQuotation.boqItems && existingQuotation.boqItems.length > 0) {
+              setBoqItems(existingQuotation.boqItems.map((item: any) => ({ ...item, id: item.id || Math.random().toString() })));
+            }
+            if (existingQuotation.hardwareItems && existingQuotation.hardwareItems.length > 0) {
+              setHardwareItems(existingQuotation.hardwareItems.map((item: any) => ({ ...item, id: item.id || Math.random().toString() })));
+            }
+            // Load summary fields
+            if (existingQuotation.totalWeight) setTotalWeight(existingQuotation.totalWeight);
+            if (existingQuotation.purchaseRate) setPurchaseRate(existingQuotation.purchaseRate);
+            if (existingQuotation.weightIncreaseAfterHDG) setWeightIncreaseAfterHDG(existingQuotation.weightIncreaseAfterHDG);
+            if (existingQuotation.costing) setCosting(existingQuotation.costing);
+            if (existingQuotation.totalWeightAfterHotDip) setTotalWeightAfterHotDip(existingQuotation.totalWeightAfterHotDip);
+            if (existingQuotation.ratePerKg) setRatePerKg(existingQuotation.ratePerKg);
+            if (existingQuotation.boqGrossProfit) setBoqGrossProfit(existingQuotation.boqGrossProfit);
+            if (existingQuotation.boqProfitPercent) setBoqProfitPercent(existingQuotation.boqProfitPercent);
+            if (existingQuotation.totalBoqAmount) setTotalBoqAmount(existingQuotation.totalBoqAmount);
+            if (existingQuotation.totalHardwareCost) setTotalHardwareCost(existingQuotation.totalHardwareCost);
+            if (existingQuotation.hardwarePurchaseTotal) setHardwarePurchaseTotal(existingQuotation.hardwarePurchaseTotal);
+            if (existingQuotation.hardwareGrossProfit) setHardwareGrossProfit(existingQuotation.hardwareGrossProfit);
+            if (existingQuotation.totalStructurePlusHardware) setTotalStructurePlusHardware(existingQuotation.totalStructurePlusHardware);
+            if (existingQuotation.gst) setGst(existingQuotation.gst);
+            if (existingQuotation.totalGrossProfit) setTotalGrossProfit(existingQuotation.totalGrossProfit);
+            if (existingQuotation.totalProfitPercent) setTotalProfitPercent(existingQuotation.totalProfitPercent);
+            if (existingQuotation.grandTotal) setGrandTotal(existingQuotation.grandTotal);
+            
+            setLoading(false);
+            return;
+          }
+        }
+        
+        if (enquiryIdFromParams) {
+          setEnquiryId(enquiryIdFromParams); // Ensure state is set
+          const enquiryRes = await enquiriesAPI.getById(enquiryIdFromParams);
           if (enquiryRes.success && enquiryRes.data) {
             setExistingEnquiry(enquiryRes.data);
             const enquiry = enquiryRes.data;
             
             // Check if quotation exists
-            const quotationsRes = await quotationsAPI.getByEnquiry(enquiryId);
+            const quotationsRes = await quotationsAPI.getByEnquiry(enquiryIdFromParams);
             if (quotationsRes.success && Array.isArray(quotationsRes.data) && quotationsRes.data.length > 0) {
               // Load existing quotation data
               const existingQuotation = quotationsRes.data[0];
@@ -169,7 +231,7 @@ export default function QuotationBOQForm() {
     };
 
     fetchData();
-  }, [enquiryId]);
+  }, [enquiryIdFromParams, quotationId]);
 
   // Fetch SMTP configs when dialog opens
   useEffect(() => {
@@ -319,7 +381,22 @@ export default function QuotationBOQForm() {
   };
 
   const handleSave = async () => {
-    if (!enquiryId || !existingEnquiry) {
+    // Get enquiryId from multiple sources
+    let finalEnquiryId = enquiryId || (existingEnquiry?.id);
+    
+    // If we still don't have enquiryId but have savedDocumentId, fetch quotation to get it
+    if (!finalEnquiryId && savedDocumentId) {
+      try {
+        const res = await quotationsAPI.getById(savedDocumentId);
+        if (res.success && res.data) {
+          finalEnquiryId = res.data.enquiryId || res.data.enquiry_id;
+        }
+      } catch (e) {
+        console.error('Error fetching quotation:', e);
+      }
+    }
+
+    if (!finalEnquiryId || !existingEnquiry) {
       toast.error('Enquiry information is required');
       return;
     }
@@ -331,7 +408,7 @@ export default function QuotationBOQForm() {
 
     try {
       const data = {
-        enquiryId,
+        enquiryId: finalEnquiryId,
         clientId: existingEnquiry.clientId || existingEnquiry.client_id,
         date: quotationDate,
         validUntil: quotationDate,

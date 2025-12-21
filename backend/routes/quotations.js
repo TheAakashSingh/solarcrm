@@ -419,6 +419,25 @@ router.put('/:id', authenticate, async (req, res, next) => {
       });
     }
 
+    // Get the existing quotation to get enquiryId
+    const existingQuotation = await prisma.quotation.findUnique({
+      where: { id: req.params.id },
+      select: { enquiryId: true }
+    });
+
+    // Get enquiry to get its order number (auto-generated at enquiry creation)
+    let finalOrderNo = orderNo;
+    if (existingQuotation?.enquiryId) {
+      const enquiry = await prisma.enquiry.findUnique({
+        where: { id: existingQuotation.enquiryId },
+        select: { orderNumber: true }
+      });
+      // Always use enquiry's order number if enquiry exists (order number is auto-generated at enquiry creation)
+      if (enquiry?.orderNumber) {
+        finalOrderNo = enquiry.orderNumber;
+      }
+    }
+
     const quotation = await prisma.quotation.update({
       where: { id: req.params.id },
       data: {
@@ -426,7 +445,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
         ...(validUntil && { validUntil: new Date(validUntil) }),
         ...(status && { status }),
         // New BOQ fields - always use enquiry's order number
-        ...(finalOrderNo !== undefined && { orderNo: finalOrderNo }),
+        ...(finalOrderNo !== undefined && finalOrderNo !== null && { orderNo: finalOrderNo }),
         ...(nosOfModule !== undefined && { nosOfModule }),
         ...(projectCapacity !== undefined && { projectCapacity }),
         ...(noOfTable !== undefined && { noOfTable: parseInt(noOfTable) }),

@@ -142,6 +142,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/quotations/:id/edit"
+        element={
+          <ProtectedRoute>
+            <QuotationBOQForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/clients"
         element={
           <ProtectedRoute>

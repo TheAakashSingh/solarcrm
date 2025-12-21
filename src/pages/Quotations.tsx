@@ -17,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { Search, Plus, Eye, Download, Send, FileText, Loader2 } from 'lucide-react';
+import { Search, Plus, Eye, Download, Send, FileText, Loader2, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { downloadQuotationPDF, viewQuotationPDF, QuotationData, downloadQuotationBOQPDF, viewQuotationBOQPDF, QuotationBOQData } from '@/lib/pdfGenerator';
 import { useAuth } from '@/contexts/AuthContext';
@@ -455,6 +455,21 @@ export default function Quotations() {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
+                      {/* Edit button - Only for salesperson, superadmin, and director */}
+                      {(currentUser?.role === 'salesman' || 
+                        currentUser?.role === 'superadmin' || 
+                        currentUser?.role === 'director') && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          asChild
+                          title="Edit Quotation"
+                        >
+                          <Link to={`/quotations/${quotation.id}/edit`}>
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
                       <Button 
                         variant="ghost" 
                         size="icon"
