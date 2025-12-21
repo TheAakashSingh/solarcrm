@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import MyTasks from "./pages/MyTasks";
+import DesignerTasks from "./pages/DesignerTasks";
 import AllEnquiries from "./pages/AllEnquiries";
 import Clients from "./pages/Clients";
 import EnquiryForm from "./pages/EnquiryForm";
@@ -57,6 +58,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MyTasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/designer-tasks"
+        element={
+          <ProtectedRoute>
+            <DesignerTasks />
           </ProtectedRoute>
         }
       />

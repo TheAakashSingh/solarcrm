@@ -116,6 +116,7 @@ model User {
   quotationsCreated    Quotation[]
   invoicesCreated      Invoice[]
   smtpConfigsCreated   SmtpConfig[]  @relation("SmtpConfigCreator")
+  enquiryNotes         EnquiryNote[]
 
   @@index([email])
   @@index([role])
@@ -171,6 +172,7 @@ model Enquiry {
   dispatchWork        DispatchWork?
   quotations          Quotation[]
   invoices            Invoice[]
+  notes               EnquiryNote[]
 
   @@index([enquiryNum])
   @@index([status])
@@ -194,6 +196,23 @@ model EnquiryStatusHistory {
 
   @@index([enquiryId])
   @@index([status])
+}
+
+model EnquiryNote {
+  id          String   @id @default(uuid())
+  enquiryId   String
+  note        String   @db.Text
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  enquiry     Enquiry  @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  creator     User     @relation(fields: [createdBy], references: [id])
+
+  @@index([enquiryId])
+  @@index([createdBy])
+  @@index([createdAt])
 }
 
 model DesignWork {

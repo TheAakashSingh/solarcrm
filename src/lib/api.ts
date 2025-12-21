@@ -250,6 +250,17 @@ export const enquiriesAPI = {
     return apiRequest(`/enquiries/${id}/history`);
   },
 
+  getNotes: async (id: string) => {
+    return apiRequest(`/enquiries/${id}/notes`);
+  },
+
+  addNote: async (id: string, note: string) => {
+    return apiRequest(`/enquiries/${id}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+
   getMyWorkedEnquiries: async (params?: {
     status?: string;
     materialType?: string;
@@ -408,6 +419,52 @@ export const designAPI = {
     return apiRequest(`/design/attachments/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  save: async (id: string, designData: Partial<{
+    designer_notes?: string;
+    client_requirements?: string;
+    designerNotes?: string;
+    clientRequirements?: string;
+  }>) => {
+    const backendData: any = {};
+    if (designData.designer_notes !== undefined) backendData.designerNotes = designData.designer_notes;
+    if (designData.client_requirements !== undefined) backendData.clientRequirements = designData.client_requirements;
+    if (designData.designerNotes !== undefined) backendData.designerNotes = designData.designerNotes;
+    if (designData.clientRequirements !== undefined) backendData.clientRequirements = designData.clientRequirements;
+    
+    return apiRequest(`/design/${id}/save`, {
+      method: 'POST',
+      body: JSON.stringify(backendData),
+    });
+  },
+
+  returnToSales: async (id: string, note?: string) => {
+    return apiRequest(`/design/${id}/return-to-sales`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+
+  getMyTasks: async (status?: 'pending' | 'in_progress' | 'completed') => {
+    const queryParams = status ? `?status=${status}` : '';
+    return apiRequest(`/design/my-tasks${queryParams}`);
+  },
+
+  downloadAttachment: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/design/attachments/${id}/download`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to download file');
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    return url;
   },
 };
 

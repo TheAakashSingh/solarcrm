@@ -219,6 +219,205 @@ router.post('/assign', authenticate, async (req, res, next) => {
   }
 });
 
+// Save design work (without completing/returning to sales)
+router.post('/:id/save', authenticate, async (req, res, next) => {
+  try {
+    const { 
+      designerNotes, 
+      clientRequirements,
+      designer_notes, 
+      client_requirements
+    } = req.body;
+    
+    const finalDesignerNotes = designerNotes ?? designer_notes;
+    const finalClientRequirements = clientRequirements ?? client_requirements;
+
+    const existingDesignWork = await prisma.designWork.findUnique({
+      where: { id: req.params.id },
+      select: { enquiryId: true, designerId: true }
+    });
+
+    if (!existingDesignWork) {
+      return res.status(404).json({
+        success: false,
+        message: 'Design work not found'
+      });
+    }
+
+    // Only designer can save their own work
+    if (existingDesignWork.designerId !== req.user.id && req.user.role !== 'superadmin' && req.user.role !== 'director') {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only save your own design work'
+      });
+    }
+
+    const designWork = await prisma.designWork.update({
+      where: { id: req.params.id },
+      data: {
+        ...(finalDesignerNotes !== undefined && { designerNotes: finalDesignerNotes }),
+        ...(finalClientRequirements !== undefined && { clientRequirements: finalClientRequirements }),
+        designStatus: 'in_progress'
+      },
+      include: {
+        designer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Design work saved successfully',
+      data: designWork
+    });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'Design work not found'
+      });
+    }
+    next(error);
+  }
+});
+
+// Return design to salesperson (complete and return)
+router.post('/:id/return-to-sales', authenticate, async (req, res, next) => {
+  try {
+    const { note } = req.body;
+    
+    const existingDesignWork = await prisma.designWork.findUnique({
+      where: { id: req.params.id },
+      select: { enquiryId: true, designerId: true }
+    });
+
+    if (!existingDesignWork) {
+      return res.status(404).json({
+        success: false,
+        message: 'Design work not found'
+      });
+    }
+
+    // Only designer can return their own work
+    if (existingDesignWork.designerId !== req.user.id && req.user.role !== 'superadmin' && req.user.role !== 'director') {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only return your own design work'
+      });
+    }
+
+    // Get the enquiry to find the salesperson
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: existingDesignWork.enquiryId },
+      select: { enquiryBy: true, enquiryNum: true }
+    });
+
+    if (!enquiry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enquiry not found'
+      });
+    }
+
+    // Update design work to completed
+    const designWork = await prisma.designWork.update({
+      where: { id: req.params.id },
+      data: {
+        designStatus: 'completed',
+        completedAt: new Date()
+      },
+      include: {
+        designer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    // Return enquiry to salesperson
+    await prisma.enquiry.update({
+      where: { id: existingDesignWork.enquiryId },
+      data: {
+        status: 'BOQ',
+        currentAssignedPerson: enquiry.enquiryBy,
+        workAssignedDate: new Date()
+      }
+    });
+
+    // Create status history with note
+    await prisma.enquiryStatusHistory.create({
+      data: {
+        enquiryId: existingDesignWork.enquiryId,
+        status: 'BOQ',
+        assignedPerson: enquiry.enquiryBy,
+        note: note || 'Design completed, returned to salesperson for BOQ'
+      }
+    });
+
+    // Create enquiry note if note provided
+    if (note && note.trim()) {
+      await prisma.enquiryNote.create({
+        data: {
+          enquiryId: existingDesignWork.enquiryId,
+          note: note.trim(),
+          createdBy: req.user.id
+        }
+      });
+    }
+
+    // Emit notification
+    const io = req.app.get('io');
+    if (io) {
+      const fullEnquiry = await prisma.enquiry.findUnique({
+        where: { id: existingDesignWork.enquiryId },
+        include: {
+          client: true,
+          enquiryByUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      });
+      if (fullEnquiry) {
+        const notification = createDesignCompletedNotification(
+          fullEnquiry,
+          designWork.designer
+        );
+        notifyUser(io, enquiry.enquiryBy, notification);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Design work completed and returned to salesperson',
+      data: designWork
+    });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'Design work not found'
+      });
+    }
+    next(error);
+  }
+});
+
 // Update design work
 router.put('/:id', authenticate, async (req, res, next) => {
   try {
@@ -227,7 +426,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
       designerNotes, 
       clientRequirements, 
       designStatus,
-      designer_notes,
+      designer_notes, 
       client_requirements,
       design_status
     } = req.body;
@@ -420,6 +619,126 @@ router.delete('/attachments/:id', authenticate, async (req, res, next) => {
         message: 'Attachment not found'
       });
     }
+    next(error);
+  }
+});
+
+// Get all design work for designer (my tasks and all tasks)
+router.get('/my-tasks', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'designer' && req.user.role !== 'superadmin' && req.user.role !== 'director') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only designers can access this endpoint'
+      });
+    }
+
+    const { status } = req.query;
+    const where = {};
+    
+    if (req.user.role === 'designer') {
+      where.designerId = req.user.id;
+    }
+
+    if (status === 'pending' || status === 'in_progress') {
+      where.designStatus = status;
+    } else if (status === 'completed') {
+      where.designStatus = 'completed';
+    }
+
+    const designWorks = await prisma.designWork.findMany({
+      where,
+      include: {
+        enquiry: {
+          include: {
+            client: {
+              select: {
+                id: true,
+                clientName: true,
+                email: true,
+                contactNo: true
+              }
+            },
+            enquiryByUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        },
+        designer: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      data: designWorks,
+      count: designWorks.length
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Download design attachment
+router.get('/attachments/:id/download', authenticate, async (req, res, next) => {
+  try {
+    const attachment = await prisma.designAttachment.findUnique({
+      where: { id: req.params.id },
+      include: {
+        enquiry: {
+          select: {
+            id: true,
+            enquiryNum: true
+          }
+        }
+      }
+    });
+
+    if (!attachment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attachment not found'
+      });
+    }
+
+    // Check if user has access (salesperson, production, designer, admin)
+    const hasAccess = 
+      req.user.role === 'superadmin' ||
+      req.user.role === 'director' ||
+      req.user.role === 'salesman' ||
+      req.user.role === 'production' ||
+      req.user.role === 'designer';
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to download this file'
+      });
+    }
+
+    // If fileUrl is base64, decode it
+    if (attachment.fileUrl.startsWith('data:')) {
+      const base64Data = attachment.fileUrl.split(',')[1];
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      res.setHeader('Content-Type', attachment.fileType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${attachment.fileName}"`);
+      res.send(buffer);
+    } else {
+      // If it's a URL, redirect or proxy it
+      res.redirect(attachment.fileUrl);
+    }
+  } catch (error) {
     next(error);
   }
 });

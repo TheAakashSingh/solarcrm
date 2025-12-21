@@ -128,6 +128,8 @@ export const getVisibleNavItems = (role: UserRole) => {
   if (canView(role, 'clients')) visibleItems.push('clients');
   if (canView(role, 'reports')) visibleItems.push('reports');
   if (canView(role, 'users')) visibleItems.push('users');
+  // Designer tasks only for designers
+  // if (role === 'designer') visibleItems.push('designer-tasks');
   // SMTP settings only for superadmin
   if (role === 'superadmin') visibleItems.push('smtp');
   

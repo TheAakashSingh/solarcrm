@@ -4,6 +4,7 @@ import { Eye, Edit, History, HelpCircle } from 'lucide-react';
 import { Enquiry } from '@/types/crm';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Table,
   TableBody,
@@ -26,6 +27,7 @@ interface EnquiryTableProps {
 }
 
 export function EnquiryTable({ enquiries, showActions = true }: EnquiryTableProps) {
+  const { currentUser } = useAuth();
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -159,11 +161,16 @@ export function EnquiryTable({ enquiries, showActions = true }: EnquiryTableProp
                         <Eye className="h-4 w-4 text-gray-600" />
                       </Link>
                     </Button>
-                    <Button variant="ghost" size="icon" asChild className="h-8 w-8 hover:bg-gray-100">
-                      <Link to={`/enquiries/${enquiry.id}/edit`}>
-                        <Edit className="h-4 w-4 text-gray-600" />
-                      </Link>
-                    </Button>
+                    {/* Only salesperson, superadmin, and director can edit enquiries - hide for designers */}
+                    {(currentUser?.role === 'salesman' || 
+                      currentUser?.role === 'superadmin' || 
+                      currentUser?.role === 'director') && (
+                      <Button variant="ghost" size="icon" asChild className="h-8 w-8 hover:bg-gray-100">
+                        <Link to={`/enquiries/${enquiry.id}/edit`}>
+                          <Edit className="h-4 w-4 text-gray-600" />
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" asChild className="h-8 w-8 hover:bg-gray-100">
                       <Link to={`/enquiries/${enquiry.id}/history`}>
                         <History className="h-4 w-4 text-gray-600" />

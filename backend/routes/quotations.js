@@ -46,7 +46,9 @@ router.get('/', authenticate, async (req, res, next) => {
               email: true
             }
           },
-          lineItems: true
+          lineItems: true,
+          boqItems: true,
+          hardwareItems: true
         },
         orderBy: { createdAt: 'desc' }
       }),

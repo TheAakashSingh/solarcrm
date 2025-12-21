@@ -399,23 +399,25 @@ export async function generateQuotationBOQPDF(data: QuotationBOQData): Promise<j
 
   yPos = 28;
 
-  // Client and Order Info
+  // Client and Order Info - Better spacing
+  const infoRightStart = pageWidth / 2 + 20; // Right side starts from middle
+  
   addText(`CLIENT NAME : -`, margin, yPos, { size: 10, bold: true });
-  addText(data.clientName, margin + 45, yPos, { size: 10 });
-  addText(`ORDER NO.`, pageWidth - margin - 60, yPos, { size: 10, bold: true });
-  addText(data.orderNo, pageWidth - margin, yPos, { size: 10, align: 'right' });
+  addText(data.clientName, margin + 48, yPos, { size: 10 });
+  addText(`ORDER NO.`, infoRightStart, yPos, { size: 10, bold: true });
+  addText(data.orderNo || '', infoRightStart + 35, yPos, { size: 10 });
 
-  yPos += 6;
+  yPos += 7;
   addText(`NOS. OF MODULE :-`, margin, yPos, { size: 10, bold: true });
-  addText(data.nosOfModule, margin + 50, yPos, { size: 10 });
-  addText(`DATE:-`, pageWidth - margin - 60, yPos, { size: 10, bold: true });
-  addText(data.date, pageWidth - margin, yPos, { size: 10, align: 'right' });
+  addText(data.nosOfModule || '', margin + 52, yPos, { size: 10 });
+  addText(`DATE:-`, infoRightStart, yPos, { size: 10, bold: true });
+  addText(data.date, infoRightStart + 35, yPos, { size: 10 });
 
-  yPos += 6;
+  yPos += 7;
   addText(`PROJECT CAPACITY: -`, margin, yPos, { size: 10, bold: true });
-  addText(data.projectCapacity, margin + 55, yPos, { size: 10 });
-  addText(`NO OF TABLE:-`, pageWidth - margin - 60, yPos, { size: 10, bold: true });
-  addText(data.noOfTable.toString(), pageWidth - margin, yPos, { size: 10, align: 'right' });
+  addText(data.projectCapacity || '', margin + 58, yPos, { size: 10 });
+  addText(`NO OF TABLE:-`, infoRightStart, yPos, { size: 10, bold: true });
+  addText(data.noOfTable.toString(), infoRightStart + 35, yPos, { size: 10 });
 
   yPos += 10;
 
@@ -426,19 +428,20 @@ export async function generateQuotationBOQPDF(data: QuotationBOQData): Promise<j
   
   yPos += 10;
 
-  // BOQ Table
+  // BOQ Table - Calculate widths to fit page properly
+  const availableWidth = pageWidth - 2 * margin - 4; // Account for margins and padding
   const colWidths = {
     sr: 12,
-    desc: 50,
-    type: 25,
-    spec: 45,
-    length: 25,
-    reqQty: 20,
-    totalWeight: 25,
-    weightPec: 25,
-    qtyTable: 20,
-    weightTable: 25,
-    unitWeight: 20
+    desc: 48,
+    type: 22,
+    spec: 40,
+    length: 22,
+    reqQty: 18,
+    totalWeight: 22,
+    weightPec: 22,
+    qtyTable: 18,
+    weightTable: 22,
+    unitWeight: 18
   };
 
   // Table Header
@@ -511,36 +514,42 @@ export async function generateQuotationBOQPDF(data: QuotationBOQData): Promise<j
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 5;
 
-  // BOQ Summary
-  const summaryX1 = margin + colWidths.sr + colWidths.desc + colWidths.type + colWidths.spec + colWidths.length;
-  const summaryX2 = summaryX1 + colWidths.reqQty + colWidths.totalWeight;
+  // BOQ Summary - Two column layout with proper spacing to avoid overlaps
+  const summaryLeftStart = margin + colWidths.sr + colWidths.desc + colWidths.type + colWidths.spec + colWidths.length;
+  const summaryValueX = summaryLeftStart + colWidths.reqQty + 8; // Start of value column with spacing
+  const summaryRightStart = pageWidth / 2 + 40; // Right column starts well after middle to avoid overlap
+  const summaryRightValueX = summaryRightStart + 55; // Right column label width
+  const summaryRightAmountX = pageWidth - margin - 10; // Rightmost position for values (right-aligned)
 
-  addText('TOTAL WEIGHT IN KG', summaryX1, yPos, { size: 8, bold: true });
-  addText(data.totalWeight.toFixed(1), summaryX2, yPos, { size: 8, bold: true });
-  addText('Purchase rate', summaryX2 + 30, yPos, { size: 8, bold: true });
-  addText(data.purchaseRate.toString(), pageWidth - margin - 40, yPos, { size: 8, align: 'right' });
+  // Left column - Labels and values
+  addText('TOTAL WEIGHT IN KG', summaryLeftStart, yPos, { size: 8, bold: true });
+  addText(data.totalWeight.toFixed(1), summaryValueX, yPos, { size: 8, bold: true });
 
-  yPos += 5;
-  addText('WEIGHT INCREASE AFTER HDG@8%', summaryX1, yPos, { size: 8, bold: true });
-  addText(data.weightIncreaseAfterHDG.toFixed(1), summaryX2, yPos, { size: 8, bold: true });
-  addText('Costing', summaryX2 + 30, yPos, { size: 8, bold: true });
-  addText(data.costing.toFixed(2), pageWidth - margin - 40, yPos, { size: 8, align: 'right' });
+  // Right column - Labels and values (properly spaced)
+  addText('Purchase rate', summaryRightStart, yPos, { size: 8, bold: true });
+  addText(data.purchaseRate.toFixed(2), summaryRightAmountX, yPos, { size: 8, bold: true, align: 'right' });
 
-  yPos += 5;
-  addText('TOTAL WEIGHT AFTER HOTDIP', summaryX1, yPos, { size: 8, bold: true });
-  addText(data.totalWeightAfterHotDip.toFixed(1), summaryX2, yPos, { size: 8, bold: true });
+  yPos += 7;
+  addText('WEIGHT INCREASE AFTER HDG@8%', summaryLeftStart, yPos, { size: 8, bold: true });
+  addText(data.weightIncreaseAfterHDG.toFixed(1), summaryValueX, yPos, { size: 8, bold: true });
+  addText('Costing', summaryRightStart, yPos, { size: 8, bold: true });
+  addText(data.costing.toFixed(2), summaryRightAmountX, yPos, { size: 8, bold: true, align: 'right' });
 
-  yPos += 5;
-  addText('RATE PER KG', summaryX1, yPos, { size: 8, bold: true });
-  addText(data.ratePerKg.toString(), summaryX2, yPos, { size: 8, bold: true });
-  addText('Gross profit', summaryX2 + 30, yPos, { size: 8, bold: true });
-  addText(data.boqGrossProfit.toFixed(2), pageWidth - margin - 40, yPos, { size: 8, align: 'right' });
+  yPos += 7;
+  addText('TOTAL WEIGHT AFTER HOTDIP', summaryLeftStart, yPos, { size: 8, bold: true });
+  addText(data.totalWeightAfterHotDip.toFixed(1), summaryValueX, yPos, { size: 8, bold: true });
+  addText('Gross profit', summaryRightStart, yPos, { size: 8, bold: true });
+  addText(data.boqGrossProfit.toFixed(2), summaryRightAmountX, yPos, { size: 8, bold: true, align: 'right' });
 
-  yPos += 5;
-  addText('TOTAL AMOUNT', summaryX1, yPos, { size: 8, bold: true });
-  addText(data.totalBoqAmount.toFixed(2), summaryX2, yPos, { size: 8, bold: true });
-  addText('Profit Percent', summaryX2 + 30, yPos, { size: 8, bold: true });
-  addText(data.boqProfitPercent.toFixed(1), pageWidth - margin - 40, yPos, { size: 8, align: 'right' });
+  yPos += 7;
+  addText('RATE PER KG', summaryLeftStart, yPos, { size: 8, bold: true });
+  addText(data.ratePerKg.toString(), summaryValueX, yPos, { size: 8, bold: true });
+  addText('Profit Percent', summaryRightStart, yPos, { size: 8, bold: true });
+  addText(`${data.boqProfitPercent.toFixed(1)}%`, summaryRightAmountX, yPos, { size: 8, bold: true, align: 'right' });
+
+  yPos += 7;
+  addText('TOTAL AMOUNT', summaryLeftStart, yPos, { size: 8, bold: true });
+  addText(data.totalBoqAmount.toFixed(2), summaryValueX, yPos, { size: 8, bold: true });
 
   yPos += 10;
 
@@ -557,13 +566,15 @@ export async function generateQuotationBOQPDF(data: QuotationBOQData): Promise<j
   doc.rect(margin, yPos, pageWidth - 2 * margin, 7, 'F');
   yPos += 5;
 
+  // Hardware table column widths - ensure they fit properly
   const hwColWidths = {
     sr: 15,
-    desc: 120,
+    desc: 100,
     qty: 25,
     rate: 30,
     amount: 35,
-    purchaseRate: 35
+    purchaseRate: 30,
+    total: 30
   };
 
   xPos = margin + 2;
@@ -614,35 +625,40 @@ export async function generateQuotationBOQPDF(data: QuotationBOQData): Promise<j
   doc.line(margin, yPos, pageWidth - margin, yPos);
   yPos += 5;
 
-  // Hardware Summary
+  // Hardware Summary - Two column layout with proper spacing to avoid overlaps
   const hwSummaryX = margin + hwColWidths.sr + hwColWidths.desc;
-  const hwAmountX = hwSummaryX + hwColWidths.qty + hwColWidths.rate;
-  const hwTotalX = hwAmountX + hwColWidths.amount + hwColWidths.purchaseRate;
+  const hwAmountX = hwSummaryX + hwColWidths.qty + hwColWidths.rate + 10; // Left column value position
+  const hwRightStart = pageWidth / 2 + 40; // Right column starts well after middle
+  const hwRightValueX = hwRightStart + 65; // Right column label width
+  const hwRightAmountX = pageWidth - margin - 10; // Rightmost position for values (right-aligned)
 
+  // Left column - Labels and values
   addText('TOTAL HARDWARE COST', hwSummaryX, yPos, { size: 8, bold: true });
   addText(data.totalHardwareCost.toFixed(2), hwAmountX, yPos, { size: 8, bold: true });
-  addText('Total', hwAmountX + hwColWidths.amount, yPos, { size: 8, bold: true });
-  addText(data.hardwarePurchaseTotal.toFixed(2), hwTotalX, yPos, { size: 8, bold: true, align: 'right' });
 
-  yPos += 5;
+  // Right column - Labels and values
+  addText('Total', hwRightStart, yPos, { size: 8, bold: true });
+  addText(data.hardwarePurchaseTotal.toFixed(2), hwRightAmountX, yPos, { size: 8, bold: true, align: 'right' });
+
+  yPos += 7;
   addText('TOTAL STRUCTURE + HARDWARE COST', hwSummaryX, yPos, { size: 8, bold: true });
   addText(data.totalStructurePlusHardware.toFixed(2), hwAmountX, yPos, { size: 8, bold: true });
-  addText('Gross profit', hwAmountX + hwColWidths.amount, yPos, { size: 8, bold: true });
-  addText(data.hardwareGrossProfit.toFixed(2), hwTotalX, yPos, { size: 8, bold: true, align: 'right' });
+  addText('Gross profit', hwRightStart, yPos, { size: 8, bold: true });
+  addText(data.hardwareGrossProfit.toFixed(2), hwRightAmountX, yPos, { size: 8, bold: true, align: 'right' });
 
-  yPos += 5;
+  yPos += 7;
   addText('GST @ 18%', hwSummaryX, yPos, { size: 8, bold: true });
   addText(data.gst.toFixed(2), hwAmountX, yPos, { size: 8, bold: true });
-  addText('Total Gross Profit', hwAmountX + hwColWidths.amount, yPos, { size: 8, bold: true });
-  addText(data.totalGrossProfit.toFixed(2), hwTotalX, yPos, { size: 8, bold: true, align: 'right' });
+  addText('Total Gross Profit', hwRightStart, yPos, { size: 8, bold: true });
+  addText(data.totalGrossProfit.toFixed(2), hwRightAmountX, yPos, { size: 8, bold: true, align: 'right' });
 
-  yPos += 6;
+  yPos += 10;
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.rect(hwSummaryX, yPos - 5, pageWidth - margin - hwSummaryX, 8, 'F');
   addText('GRAND TOTAL AMOUNT', hwSummaryX + 5, yPos, { size: 10, bold: true, color: [255, 255, 255] });
   addText(`₹${data.grandTotal.toFixed(2)}`, pageWidth - margin - 5, yPos, { size: 10, bold: true, align: 'right', color: [255, 255, 255] });
-  addText('Total Profit Percent', hwAmountX + hwColWidths.amount, yPos, { size: 8, bold: true, color: [255, 255, 255] });
-  addText(`${data.totalProfitPercent.toFixed(1)}%`, hwTotalX, yPos, { size: 8, bold: true, align: 'right', color: [255, 255, 255] });
+  addText('Total Profit Percent', hwRightStart, yPos, { size: 8, bold: true, color: [255, 255, 255] });
+  addText(`${data.totalProfitPercent.toFixed(1)}%`, hwRightAmountX, yPos, { size: 8, bold: true, align: 'right', color: [255, 255, 255] });
 
   return doc;
 }

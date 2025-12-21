@@ -35,6 +35,7 @@ const mainNavigation = [
   { name: 'Enquiries', href: '/enquiries', icon: ClipboardList, key: 'enquiries' },
   { name: 'Pipeline', href: '/kanban', icon: Kanban, key: 'kanban' },
   { name: 'My Tasks', href: '/my-tasks', icon: ListTodo, key: 'tasks' },
+  { name: 'Designer Tasks', href: '/designer-tasks', icon: ListTodo, key: 'designer-tasks', role: 'designer' },
   { name: 'Activity History', href: '/activity', icon: Activity, key: 'activity' },
 ];
 
@@ -59,7 +60,13 @@ export function Sidebar() {
   const visibleItems = getVisibleNavItems(userRole);
 
   const NavSection = ({ items, title }: { items: typeof mainNavigation | typeof documentNavigation | typeof managementNavigation; title?: string }) => {
-    const filteredItems = items.filter(item => visibleItems.includes(item.key));
+    const filteredItems = items.filter(item => {
+      // Check if item is visible based on permissions
+      if (!visibleItems.includes(item.key)) return false;
+      // Check role-specific items
+      if ((item as any).role && (item as any).role !== userRole) return false;
+      return true;
+    });
     
     if (filteredItems.length === 0) return null;
 

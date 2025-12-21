@@ -683,14 +683,26 @@ router.patch('/:id/status', authenticate, async (req, res, next) => {
     });
 
     // Create status history
+    const statusHistoryNote = note || `Status changed from ${oldStatus} to ${status}`;
     await prisma.enquiryStatusHistory.create({
       data: {
         enquiryId: enquiry.id,
         status,
         assignedPerson: assignedTo,
-        note: note || `Status changed from ${oldStatus} to ${status}`
+        note: statusHistoryNote
       }
     });
+
+    // Create enquiry note if note provided
+    if (note && note.trim()) {
+      await prisma.enquiryNote.create({
+        data: {
+          enquiryId: enquiry.id,
+          note: note.trim(),
+          createdBy: req.user.id
+        }
+      });
+    }
 
     // Emit notifications
     const io = req.app.get('io');
@@ -746,7 +758,7 @@ router.patch('/:id/status', authenticate, async (req, res, next) => {
 // Assign enquiry to user
 router.patch('/:id/assign', authenticate, async (req, res, next) => {
   try {
-    const { assignedPersonId } = req.body;
+    const { assignedPersonId, note } = req.body;
 
     if (!assignedPersonId) {
       return res.status(400).json({
@@ -807,14 +819,26 @@ router.patch('/:id/assign', authenticate, async (req, res, next) => {
     });
 
     // Create status history
+    const assignmentNote = note || `Reassigned to ${assignedUser.name}`;
     await prisma.enquiryStatusHistory.create({
       data: {
         enquiryId: enquiry.id,
         status: enquiry.status,
         assignedPerson: assignedPersonId,
-        note: `Reassigned to ${assignedUser.name}`
+        note: assignmentNote
       }
     });
+
+    // Create enquiry note if note provided
+    if (note && note.trim()) {
+      await prisma.enquiryNote.create({
+        data: {
+          enquiryId: enquiry.id,
+          note: note.trim(),
+          createdBy: req.user.id
+        }
+      });
+    }
 
     // Emit notification
     const io = req.app.get('io');
@@ -1160,6 +1184,100 @@ router.post('/:id/confirm-order', authenticate, async (req, res, next) => {
         message: 'Enquiry not found'
       });
     }
+    next(error);
+  }
+});
+
+// Get all notes for an enquiry
+router.get('/:id/notes', authenticate, async (req, res, next) => {
+  try {
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: req.params.id },
+      select: { id: true }
+    });
+
+    if (!enquiry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enquiry not found'
+      });
+    }
+
+    const notes = await prisma.enquiryNote.findMany({
+      where: { enquiryId: req.params.id },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            avatar: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      data: notes,
+      count: notes.length
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a note for an enquiry
+router.post('/:id/notes', authenticate, async (req, res, next) => {
+  try {
+    const { note } = req.body;
+
+    if (!note || !note.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Note is required'
+      });
+    }
+
+    const enquiry = await prisma.enquiry.findUnique({
+      where: { id: req.params.id },
+      select: { id: true }
+    });
+
+    if (!enquiry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enquiry not found'
+      });
+    }
+
+    const enquiryNote = await prisma.enquiryNote.create({
+      data: {
+        enquiryId: req.params.id,
+        note: note.trim(),
+        createdBy: req.user.id
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Note added successfully',
+      data: enquiryNote
+    });
+  } catch (error) {
     next(error);
   }
 });

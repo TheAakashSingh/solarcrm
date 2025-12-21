@@ -13,45 +13,48 @@ docker compose down
 # Remove the database volume (WARNING: This deletes ALL data)
 docker volume rm solarcrm_postgres_data
 
-# Start containers again (will create fresh database, run migrations, and seed)
+# Start containers again (will create fresh database and run migrations)
 docker compose up -d
 
-# Run seed manually (migrations run automatically on startup)
+# Wait for backend to finish migrations (check logs)
+docker compose logs -f backend
+# Wait until you see: "All migrations have been successfully applied."
+# Then press Ctrl+C to exit logs
+
+# Now run seed (migrations must complete first)
 docker compose exec backend npm run prisma:seed
 ```
 
-### Option 2: Reset Database Using Prisma (Manual)
-
-If you want to keep the database structure but clear all data:
+### Option 2: Reset and Seed in One Go
 
 ```bash
-# Connect to backend container
-docker compose exec backend sh
+# Stop containers
+docker compose down
 
-# Reset database (drops all data and re-runs migrations)
-npx prisma migrate reset
+# Remove database volume
+docker volume rm solarcrm_postgres_data
 
-# Or if you just want to seed without reset
-npm run prisma:seed
+# Start containers
+docker compose up -d
+
+# Wait 30 seconds for migrations, then seed
+sleep 30
+docker compose exec backend npm run prisma:seed
 ```
 
-### Option 3: Reset Database Using SQL (Direct)
+### Option 3: Manual Migration Then Seed
 
 ```bash
-# Connect to PostgreSQL
-docker compose exec postgres psql -U solarsync -d solarsync_db
+# Make sure containers are running
+docker compose up -d
 
-# Drop all tables (be careful!)
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
+# Wait for postgres to be ready
+docker compose exec postgres pg_isready -U solarsync -d solarsync_db
 
-# Exit psql
-\q
-
-# Run migrations again
+# Run migrations manually
 docker compose exec backend npx prisma migrate deploy
 
-# Run seed
+# Then run seed
 docker compose exec backend npm run prisma:seed
 ```
 
@@ -72,8 +75,6 @@ The seed file now **only creates users** with these roles:
 
 ```bash
 # Check users were created
-docker compose exec backend npx prisma studio
-# Or using SQL:
 docker compose exec postgres psql -U solarsync -d solarsync_db -c "SELECT email, role, name FROM \"User\";"
 ```
 
@@ -83,4 +84,4 @@ docker compose exec postgres psql -U solarsync -d solarsync_db -c "SELECT email,
 - The seed file uses `upsert`, so running it multiple times won't create duplicates
 - Default password for all users is: `password123`
 - **Change passwords after first login in production!**
-
+- **Always wait for migrations to complete before running seed**

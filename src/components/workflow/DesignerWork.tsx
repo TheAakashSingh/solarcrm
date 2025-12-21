@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Enquiry, DesignWork, DesignAttachment } from '@/types/crm';
-import { Upload, File, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Upload, File, X, CheckCircle2, Loader2, Save, Send } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { designAPI } from '@/lib/api';
@@ -35,6 +36,9 @@ export function DesignerWork({
   const [designerNotes, setDesignerNotes] = useState(designWork?.designer_notes || '');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [returnNote, setReturnNote] = useState('');
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('File select triggered', e.target.files);
@@ -50,6 +54,133 @@ export function DesignerWork({
 
   const handleRemoveFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    if (!designWork?.id) {
+      toast.error('Design work not found. Please refresh the page.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Upload files first if any
+      if (selectedFiles && selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          try {
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+            
+            await designAPI.uploadAttachment({
+              enquiryId: enquiry.id,
+              fileName: file.name,
+              fileUrl: base64,
+              fileType: file.type
+            });
+          } catch (fileError: any) {
+            console.error('Error uploading file:', fileError);
+            toast.error(`Failed to upload ${file.name}`);
+          }
+        }
+      }
+
+      // Save design work without completing
+      await designAPI.save(designWork.id, {
+        client_requirements: clientRequirements,
+        designer_notes: designerNotes
+      });
+
+      setSelectedFiles([]);
+      toast.success('Design work saved successfully');
+      
+      if (onUpdate) {
+        await onUpdate({
+          client_requirements: clientRequirements,
+          designer_notes: designerNotes
+        });
+      }
+    } catch (error: any) {
+      console.error('Error saving design work:', error);
+      toast.error(error?.message || 'Failed to save design work');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReturnToSales = async () => {
+    if (!designWork?.id) {
+      toast.error('Design work not found. Please refresh the page.');
+      return;
+    }
+
+    if (!clientRequirements.trim()) {
+      toast.error('Please enter client requirements');
+      return;
+    }
+
+    if (!designerNotes.trim()) {
+      toast.error('Please add designer notes');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Upload files first if any
+      if (selectedFiles && selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          try {
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+            
+            await designAPI.uploadAttachment({
+              enquiryId: enquiry.id,
+              fileName: file.name,
+              fileUrl: base64,
+              fileType: file.type
+            });
+          } catch (fileError: any) {
+            console.error('Error uploading file:', fileError);
+            toast.error(`Failed to upload ${file.name} - continuing anyway`);
+          }
+        }
+      }
+
+      // Save design work first
+      await designAPI.save(designWork.id, {
+        client_requirements: clientRequirements,
+        designer_notes: designerNotes
+      });
+
+      // Return to sales with note
+      await designAPI.returnToSales(designWork.id, returnNote || undefined);
+
+      setSelectedFiles([]);
+      setReturnNote('');
+      setShowReturnDialog(false);
+      toast.success('Design work completed and returned to salesperson');
+      
+      if (onComplete) {
+        await onComplete({
+          client_requirements: clientRequirements,
+          designer_notes: designerNotes,
+          design_status: 'completed',
+          completed_at: new Date().toISOString()
+        }, []);
+      }
+    } catch (error: any) {
+      console.error('Error returning design work:', error);
+      toast.error(error?.message || 'Failed to return design work');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -385,28 +516,89 @@ export function DesignerWork({
             <Separator />
             <div className="flex gap-3 justify-end">
               <Button
-                onClick={handleComplete}
-                disabled={isSubmitting || !clientRequirements.trim() || !designerNotes.trim()}
+                onClick={handleSave}
+                disabled={isSaving || isSubmitting}
+                variant="outline"
                 className="w-full sm:w-auto"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => setShowReturnDialog(true)}
+                disabled={isSaving || isSubmitting || !clientRequirements.trim() || !designerNotes.trim()}
+                className="w-full sm:w-auto"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Return to Salesperson
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Save your work anytime. Return to salesperson when design is complete.
+            </p>
+          </>
+        )}
+
+        {/* Return to Sales Dialog */}
+        <Dialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Return to Salesperson</DialogTitle>
+              <DialogDescription>
+                Add a note (optional) before returning this design to the salesperson.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="return-note">Note (Optional)</Label>
+                <Textarea
+                  id="return-note"
+                  placeholder="Add any notes or comments for the salesperson..."
+                  value={returnNote}
+                  onChange={(e) => setReturnNote(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowReturnDialog(false);
+                  setReturnNote('');
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReturnToSales}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Completing...
+                    Returning...
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Mark as Complete & Return to Salesperson
+                    <Send className="h-4 w-4 mr-2" />
+                    Return to Salesperson
                   </>
                 )}
               </Button>
-            </div>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              This will save your requirements, notes, upload files, and return the task to the salesperson
-            </p>
-          </>
-        )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {isCompleted && designWork && (() => {
           // Handle both camelCase and snake_case property names

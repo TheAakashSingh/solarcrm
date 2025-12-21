@@ -8,6 +8,7 @@ import { DesignerWork } from '@/components/workflow/DesignerWork';
 import { SalesReview } from '@/components/workflow/SalesReview';
 import { ProductionWorkflowComponent } from '@/components/workflow/ProductionWorkflow';
 import { DispatchWorkflow } from '@/components/workflow/DispatchWorkflow';
+import { EnquiryNotes } from '@/components/enquiry/EnquiryNotes';
 
 import { 
   enquiriesAPI,
@@ -461,12 +462,15 @@ export default function EnquiryDetail() {
                 View History
               </Link>
             </Button>
-            <Button asChild>
-              <Link to={`/enquiries/${id}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Enquiry
-              </Link>
-            </Button>
+            {/* Only salesperson, superadmin, and director can edit enquiry details */}
+            {(currentUser?.role === 'salesman' || isAdminOrDirector) && (
+              <Button asChild>
+                <Link to={`/enquiries/${id}/edit`}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Enquiry
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -638,10 +642,108 @@ export default function EnquiryDetail() {
                               <Badge variant={quo.status === 'accepted' ? 'default' : 'secondary'} className="capitalize">
                                 {quo.status}
                               </Badge>
-                              <Button variant="ghost" size="sm" asChild>
-                                <Link to={`/quotations`}>
-                                  View
-                                </Link>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    // Check if it's BOQ format
+                                    const isBOQ = quo.orderNo || quo.order_no || (quo.boqItems && quo.boqItems.length > 0);
+                                    
+                                    if (isBOQ) {
+                                      const { viewQuotationBOQPDF, QuotationBOQData } = await import('@/lib/pdfGenerator');
+                                      const boqData: QuotationBOQData = {
+                                        quotationNumber: quo.number || '',
+                                        orderNo: quo.orderNo || quo.order_no || '',
+                                        nosOfModule: quo.nosOfModule || quo.nos_of_module || '',
+                                        date: quo.date ? format(new Date(quo.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+                                        projectCapacity: quo.projectCapacity || quo.project_capacity || '',
+                                        noOfTable: quo.noOfTable || quo.no_of_table || 1,
+                                        clientName: ((quo.client as any)?.clientName || quo.client?.client_name || ''),
+                                        boqItems: (quo.boqItems || []).map((item: any) => ({
+                                          srNo: item.srNo || item.sr_no || 0,
+                                          descriptions: item.descriptions || '',
+                                          type: item.type || '',
+                                          specification: item.specification || '',
+                                          lengthMm: item.lengthMm || item.length_mm || 0,
+                                          requiredQty: item.requiredQty || item.required_qty || 0,
+                                          totalWeight: item.totalWeight || item.total_weight || 0,
+                                          weightPerPec: item.weightPerPec || item.weight_per_pec || 0,
+                                          qtyPerTable: item.qtyPerTable || item.qty_per_table || 0,
+                                          weightPerTable: item.weightPerTable || item.weight_per_table || 0,
+                                          unitWeight: item.unitWeight || item.unit_weight || 0,
+                                        })),
+                                        totalWeight: quo.totalWeight || quo.total_weight || 0,
+                                        purchaseRate: quo.purchaseRate || quo.purchase_rate || 0,
+                                        weightIncreaseAfterHDG: quo.weightIncreaseAfterHDG || quo.weight_increase_after_hdg || 0,
+                                        costing: quo.costing || 0,
+                                        totalWeightAfterHotDip: quo.totalWeightAfterHotDip || quo.total_weight_after_hot_dip || 0,
+                                        ratePerKg: quo.ratePerKg || quo.rate_per_kg || 0,
+                                        boqGrossProfit: quo.boqGrossProfit || quo.boq_gross_profit || 0,
+                                        boqProfitPercent: quo.boqProfitPercent || quo.boq_profit_percent || 0,
+                                        totalBoqAmount: quo.totalBoqAmount || quo.total_boq_amount || 0,
+                                        hardwareItems: (quo.hardwareItems || []).map((item: any) => ({
+                                          srNo: item.srNo || item.sr_no || 0,
+                                          descriptions: item.descriptions || '',
+                                          quantity: item.quantity || 0,
+                                          rate: item.rate || 0,
+                                          amount: item.amount || 0,
+                                          purchaseRate: item.purchaseRate || item.purchase_rate,
+                                        })),
+                                        totalHardwareCost: quo.totalHardwareCost || quo.total_hardware_cost || 0,
+                                        hardwarePurchaseTotal: quo.hardwarePurchaseTotal || quo.hardware_purchase_total || 0,
+                                        hardwareGrossProfit: quo.hardwareGrossProfit || quo.hardware_gross_profit || 0,
+                                        totalStructurePlusHardware: quo.totalStructurePlusHardware || quo.total_structure_plus_hardware || 0,
+                                        gst: quo.gst || 0,
+                                        totalGrossProfit: quo.totalGrossProfit || quo.total_gross_profit || 0,
+                                        totalProfitPercent: quo.totalProfitPercent || quo.total_profit_percent || 0,
+                                        grandTotal: quo.grandTotal || quo.grand_total || quo.amount || 0,
+                                      };
+                                      await viewQuotationBOQPDF(boqData);
+                                    } else {
+                                      const { viewQuotationPDF, QuotationData } = await import('@/lib/pdfGenerator');
+                                      const quotationData: QuotationData = {
+                                        quotationNumber: (quo.number || '').replace('QUO-', '').replace('INV-', ''),
+                                        date: quo.date ? format(new Date(quo.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+                                        validUntil: quo.validUntil ? format(new Date(quo.validUntil), 'yyyy-MM-dd') : quo.valid_until ? format(new Date(quo.valid_until), 'yyyy-MM-dd') : '',
+                                        client: {
+                                          name: ((quo.client as any)?.clientName || quo.client?.client_name || ''),
+                                          contactPerson: ((quo.client as any)?.contactPerson || quo.client?.contact_person || ''),
+                                          address: quo.client?.address || '',
+                                          email: quo.client?.email || '',
+                                          contactNo: ((quo.client as any)?.contactNo || quo.client?.contact_no || ''),
+                                        },
+                                        company: {
+                                          name: 'SolarSync Solutions',
+                                          address: '123 Industrial Area, Solar City, India - 302001',
+                                          email: 'info@solarsync.com',
+                                          phone: '+91 98765 43210',
+                                          gstin: '29ABCDE1234F1Z5',
+                                        },
+                                        items: quo.lineItems ? quo.lineItems.map((item: any) => ({
+                                          description: item.description,
+                                          quantity: item.quantity,
+                                          unit: item.unit,
+                                          rate: item.rate,
+                                          amount: item.amount,
+                                        })) : [],
+                                        subtotal: quo.subtotal || 0,
+                                        discount: quo.discount || 0,
+                                        discountAmount: quo.discountAmount || quo.discount_amount || 0,
+                                        taxRate: quo.taxRate || quo.tax_rate || 18,
+                                        taxAmount: quo.taxAmount || quo.tax_amount || 0,
+                                        grandTotal: quo.grandTotal || quo.grand_total || quo.amount || 0,
+                                      };
+                                      await viewQuotationPDF(quotationData);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error viewing quotation:', error);
+                                    toast.error('Failed to view quotation');
+                                  }
+                                }}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
                               </Button>
                             </div>
                           </div>
@@ -961,6 +1063,16 @@ export default function EnquiryDetail() {
                   />
                 )}
 
+                {/* Notes Section - Show for all users */}
+                {id && (
+                  <EnquiryNotes
+                    enquiryId={id}
+                    onNoteAdded={() => {
+                      refresh();
+                    }}
+                  />
+                )}
+
                 {/* Communication Logs - Show for salesperson on their enquiries (available from creation) */}
                 {((enquiry.enquiryBy || enquiry.enquiry_by) === currentUser?.id || 
                   (enquiry.currentAssignedPerson || enquiry.current_assigned_person) === currentUser?.id) &&
@@ -1185,18 +1297,30 @@ export default function EnquiryDetail() {
                       const fileName = attachment.file_name || (attachment as any).fileName;
                       const uploadedAt = (attachment as any).uploadedAt || attachment.uploaded_at;
                       
-                      const handleDownload = () => {
-                        if (fileUrl?.startsWith('data:')) {
-                          // Base64 file
-                          const link = document.createElement('a');
-                          link.href = fileUrl;
-                          link.download = fileName;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        } else {
-                          // Regular URL
-                          window.open(fileUrl, '_blank');
+                      const handleDownload = async () => {
+                        try {
+                          if (fileUrl?.startsWith('data:')) {
+                            // Base64 file
+                            const link = document.createElement('a');
+                            link.href = fileUrl;
+                            link.download = fileName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          } else {
+                            // Use API download endpoint
+                            const downloadUrl = await designAPI.downloadAttachment(attachment.id);
+                            const link = document.createElement('a');
+                            link.href = downloadUrl;
+                            link.download = fileName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(downloadUrl);
+                          }
+                        } catch (error) {
+                          console.error('Error downloading file:', error);
+                          toast.error('Failed to download file');
                         }
                       };
 
