@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, Eye, Calendar, User } from 'lucide-react';
+import { Loader2, FileText, Eye, Calendar, User, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -141,12 +141,22 @@ export default function DesignerTasks() {
                   ? `Updated: ${format(new Date(designWork.updatedAt), 'dd MMM yyyy, HH:mm')}`
                   : ''}
               </div>
-              <Link to={`/enquiries/${enquiry.id}`}>
-                <Button variant="outline" size="sm">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Details
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link to={`/enquiries/${enquiry.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
+                  </Button>
+                </Link>
+                {activeTab === 'my-tasks' && (
+                  <Link to={`/enquiries/${enquiry.id}/edit`}>
+                    <Button variant="outline" size="sm">
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

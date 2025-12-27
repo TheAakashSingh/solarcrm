@@ -32,8 +32,6 @@ export function DesignerWork({
   onUploadFiles
 }: DesignerWorkProps) {
   const { currentUser } = useAuth();
-  const [clientRequirements, setClientRequirements] = useState(designWork?.client_requirements || '');
-  const [designerNotes, setDesignerNotes] = useState(designWork?.designer_notes || '');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -88,20 +86,14 @@ export function DesignerWork({
         }
       }
 
-      // Save design work without completing
-      await designAPI.save(designWork.id, {
-        client_requirements: clientRequirements,
-        designer_notes: designerNotes
-      });
+      // Save design work without completing (no fields to save, just trigger update)
+      await designAPI.save(designWork.id, {});
 
       setSelectedFiles([]);
       toast.success('Design work saved successfully');
       
       if (onUpdate) {
-        await onUpdate({
-          client_requirements: clientRequirements,
-          designer_notes: designerNotes
-        });
+        await onUpdate({});
       }
     } catch (error: any) {
       console.error('Error saving design work:', error);
@@ -114,16 +106,6 @@ export function DesignerWork({
   const handleReturnToSales = async () => {
     if (!designWork?.id) {
       toast.error('Design work not found. Please refresh the page.');
-      return;
-    }
-
-    if (!clientRequirements.trim()) {
-      toast.error('Please enter client requirements');
-      return;
-    }
-
-    if (!designerNotes.trim()) {
-      toast.error('Please add designer notes');
       return;
     }
 
@@ -153,11 +135,8 @@ export function DesignerWork({
         }
       }
 
-      // Save design work first
-      await designAPI.save(designWork.id, {
-        client_requirements: clientRequirements,
-        designer_notes: designerNotes
-      });
+      // Save design work first (no fields to save)
+      await designAPI.save(designWork.id, {});
 
       // Return to sales with note
       await designAPI.returnToSales(designWork.id, returnNote || undefined);
@@ -169,8 +148,6 @@ export function DesignerWork({
       
       if (onComplete) {
         await onComplete({
-          client_requirements: clientRequirements,
-          designer_notes: designerNotes,
           design_status: 'completed',
           completed_at: new Date().toISOString()
         }, []);
@@ -185,22 +162,10 @@ export function DesignerWork({
 
   const handleComplete = async () => {
     console.log('Complete button clicked', { 
-      hasRequirements: !!clientRequirements.trim(), 
-      hasNotes: !!designerNotes.trim(),
       selectedFiles: selectedFiles.length,
       designWorkId: designWork?.id,
       enquiryId: enquiry.id
     });
-    
-    if (!clientRequirements.trim()) {
-      toast.error('Please enter client requirements');
-      return;
-    }
-    
-    if (!designerNotes.trim()) {
-      toast.error('Please add designer notes');
-      return;
-    }
 
     if (!enquiry?.id) {
       toast.error('Enquiry ID is missing. Please refresh the page.');
@@ -225,7 +190,7 @@ export function DesignerWork({
             throw new Error('User ID is missing. Please refresh the page.');
           }
           
-          const assignRes = await designAPI.assign(enquiry.id, currentUser.id, clientRequirements || '');
+          const assignRes = await designAPI.assign(enquiry.id, currentUser.id, '');
           if (assignRes.success && assignRes.data && typeof assignRes.data === 'object') {
             const assignData = assignRes.data as any;
             if (assignData.designWork && assignData.designWork.id) {
@@ -298,14 +263,10 @@ export function DesignerWork({
       
       // Step 2: Update design work to completed - this will auto-assign back to salesperson
       console.log('Updating design work status to completed...', {
-        designWorkId,
-        clientRequirements: clientRequirements.substring(0, 50) + '...',
-        designerNotes: designerNotes.substring(0, 50) + '...'
+        designWorkId
       });
       
       const updateResponse = await designAPI.update(designWorkId, {
-        client_requirements: clientRequirements,
-        designer_notes: designerNotes,
         design_status: 'completed'
       });
       
@@ -326,8 +287,6 @@ export function DesignerWork({
         console.log('Calling parent onComplete callback...');
         try {
           await onComplete({
-            client_requirements: clientRequirements,
-            designer_notes: designerNotes,
             design_status: 'completed',
             completed_at: new Date().toISOString()
           }, []);
@@ -364,33 +323,6 @@ export function DesignerWork({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="requirements">Client Requirements & Details</Label>
-          <Textarea
-            id="requirements"
-            placeholder="Enter detailed client requirements, specifications, measurements, and any special notes..."
-            value={clientRequirements}
-            onChange={(e) => setClientRequirements(e.target.value)}
-            rows={6}
-            disabled={isCompleted}
-            className="resize-none"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="notes">Designer Notes & Work Done</Label>
-          <Textarea
-            id="notes"
-            placeholder="Describe the design work done, materials used, calculations, modifications, etc..."
-            value={designerNotes}
-            onChange={(e) => setDesignerNotes(e.target.value)}
-            rows={6}
-            disabled={isCompleted}
-            className="resize-none"
-          />
-        </div>
-
-        <Separator />
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -535,7 +467,7 @@ export function DesignerWork({
               </Button>
               <Button
                 onClick={() => setShowReturnDialog(true)}
-                disabled={isSaving || isSubmitting || !clientRequirements.trim() || !designerNotes.trim()}
+                disabled={isSaving || isSubmitting}
                 className="w-full sm:w-auto"
               >
                 <Send className="h-4 w-4 mr-2" />

@@ -19,6 +19,7 @@ import {
   quotationsAPI,
   usersAPI
 } from '@/lib/api';
+import type { QuotationBOQData, QuotationData } from '@/lib/pdfGenerator';
 import { STATUS_LIST } from '@/types/crm';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -206,7 +207,7 @@ function CommunicationLogsCard({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Communication Type</Label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(['call', 'email', 'meeting', 'note'] as const).map((type) => (
                     <Button
                       key={type}
@@ -474,7 +475,7 @@ export default function EnquiryDetail() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-3">
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Status Card */}
@@ -526,7 +527,7 @@ export default function EnquiryDetail() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex items-center gap-3">
                     <Hash className="h-5 w-5 text-muted-foreground" />
                     <div>
@@ -651,7 +652,7 @@ export default function EnquiryDetail() {
                                     const isBOQ = quo.orderNo || quo.order_no || (quo.boqItems && quo.boqItems.length > 0);
                                     
                                     if (isBOQ) {
-                                      const { viewQuotationBOQPDF, QuotationBOQData } = await import('@/lib/pdfGenerator');
+                                      const { viewQuotationBOQPDF } = await import('@/lib/pdfGenerator');
                                       const boqData: QuotationBOQData = {
                                         quotationNumber: quo.number || '',
                                         orderNo: quo.orderNo || quo.order_no || '',
@@ -701,7 +702,7 @@ export default function EnquiryDetail() {
                                       };
                                       await viewQuotationBOQPDF(boqData);
                                     } else {
-                                      const { viewQuotationPDF, QuotationData } = await import('@/lib/pdfGenerator');
+                                      const { viewQuotationPDF } = await import('@/lib/pdfGenerator');
                                       const quotationData: QuotationData = {
                                         quotationNumber: (quo.number || '').replace('QUO-', '').replace('INV-', ''),
                                         date: quo.date ? format(new Date(quo.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
@@ -1073,31 +1074,8 @@ export default function EnquiryDetail() {
                   />
                 )}
 
-                {/* Communication Logs - Show for salesperson on their enquiries (available from creation) */}
-                {((enquiry.enquiryBy || enquiry.enquiry_by) === currentUser?.id || 
-                  (enquiry.currentAssignedPerson || enquiry.current_assigned_person) === currentUser?.id) &&
-                 currentUser?.role === 'salesman' && (
-                  <CommunicationLogsCard
-                    communicationLogs={communicationLogs}
-                    onAddLog={async (log) => {
-                      if (id && currentUser) {
-                        try {
-                          await communicationAPI.create({
-                            enquiryId: id,
-                            communicationType: log.communication_type || 'note',
-                            subject: log.subject || '',
-                            message: log.message || '',
-                            communicationDate: log.communication_date,
-                            clientResponse: log.client_response
-                          });
-                          refresh();
-                        } catch (error) {
-                          toast.error('Failed to add communication log');
-                        }
-                      }
-                    }}
-                  />
-                )}
+                {/* Communication Logs - Hidden for salespersons as Note section is sufficient */}
+                {/* Note: Communication logs have been replaced by the Notes section above for all users */}
 
                 {/* Production Workflow - Show when status is ReadyForProduction, InProduction, ProductionComplete, or Hotdip */}
                 {(enquiry.status === 'ReadyForProduction' || 
@@ -1569,7 +1547,7 @@ export default function EnquiryDetail() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Enquiry Number</Label>
                             <Input defaultValue={enquiry.enquiry_num} />
@@ -1616,7 +1594,7 @@ export default function EnquiryDetail() {
                     </DialogContent>
                   </Dialog>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Button variant="outline" onClick={() => toast.info('Status change dialog would open')}>
                       <Activity className="h-4 w-4 mr-2" />
                       Change Status

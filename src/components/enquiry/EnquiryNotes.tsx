@@ -158,36 +158,63 @@ export function EnquiryNotes({ enquiryId, onNoteAdded }: EnquiryNotesProps) {
               No notes yet. Be the first to add a note!
             </p>
           ) : (
-            <div className="space-y-4">
-              {notes.map((note) => (
-                <div key={note.id} className="flex gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className={getRoleBadge(note.creator?.role || '')}>
-                      {note.creator?.avatar ? (
-                        <img src={note.creator.avatar} alt={note.creator.name} />
-                      ) : (
-                        getInitials(note.creator?.name || 'U')
+            <div className="max-h-[500px] overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              {notes.map((note) => {
+                const isCurrentUser = note.createdBy === currentUser?.id;
+                return (
+                  <div
+                    key={note.id}
+                    className={`flex gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {!isCurrentUser && (
+                      <Avatar className="h-8 w-8 flex-shrink-0">
+                        <AvatarFallback className={getRoleBadge(note.creator?.role || '')}>
+                          {note.creator?.avatar ? (
+                            <img src={note.creator.avatar} alt={note.creator.name} />
+                          ) : (
+                            getInitials(note.creator?.name || 'U')
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className={`flex flex-col max-w-[80%] sm:max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+                      {!isCurrentUser && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-foreground">
+                            {note.creator?.name || 'Unknown User'}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {note.creator?.role || 'user'}
+                          </Badge>
+                        </div>
                       )}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {note.creator?.name || 'Unknown User'}
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        {note.creator?.role || 'user'}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
+                      <div
+                        className={`rounded-lg px-4 py-2 ${
+                          isCurrentUser
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-foreground'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap break-words">{note.note}</p>
+                      </div>
+                      <span className={`text-xs text-muted-foreground mt-1 ${isCurrentUser ? 'text-right' : 'text-left'}`}>
                         {format(new Date(note.createdAt), 'dd MMM yyyy, HH:mm')}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground whitespace-pre-wrap">
-                      {note.note}
-                    </p>
+                    {isCurrentUser && (
+                      <Avatar className="h-8 w-8 flex-shrink-0">
+                        <AvatarFallback className={getRoleBadge(currentUser?.role || '')}>
+                          {currentUser?.avatar ? (
+                            <img src={currentUser.avatar} alt={currentUser.name} />
+                          ) : (
+                            getInitials(currentUser?.name || 'U')
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

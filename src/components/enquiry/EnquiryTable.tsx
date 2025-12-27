@@ -39,7 +39,8 @@ export function EnquiryTable({ enquiries, showActions = true }: EnquiryTableProp
   return (
     <TooltipProvider>
       <div className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow className="bg-gray-50 hover:bg-gray-50">
               <TableHead className="data-table-header">Enquiry ID</TableHead>
@@ -161,8 +162,9 @@ export function EnquiryTable({ enquiries, showActions = true }: EnquiryTableProp
                         <Eye className="h-4 w-4 text-gray-600" />
                       </Link>
                     </Button>
-                    {/* Only salesperson, superadmin, and director can edit enquiries - hide for designers */}
-                    {(currentUser?.role === 'salesman' || 
+                    {/* Only salesperson can edit if enquiry is assigned to them, or admin/director can always edit */}
+                    {((currentUser?.role === 'salesman' && 
+                       (enquiry.current_assigned_person === currentUser.id || enquiry.currentAssignedPerson === currentUser.id)) ||
                       currentUser?.role === 'superadmin' || 
                       currentUser?.role === 'director') && (
                       <Button variant="ghost" size="icon" asChild className="h-8 w-8 hover:bg-gray-100">
@@ -190,6 +192,7 @@ export function EnquiryTable({ enquiries, showActions = true }: EnquiryTableProp
           )}
         </TableBody>
       </Table>
+        </div>
       </div>
     </TooltipProvider>
   );

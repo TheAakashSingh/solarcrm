@@ -85,10 +85,10 @@ router.post('/', authenticate, async (req, res, next) => {
   try {
     const { clientName, email, contactNo, contactPerson, address } = req.body;
 
-    if (!clientName || !email || !contactNo || !contactPerson || !address) {
+    if (!clientName || !contactNo || !contactPerson || !address) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required'
+        message: 'Client name, contact number, contact person, and address are required'
       });
     }
 

@@ -148,13 +148,46 @@ export default function KanbanBoard() {
     return users.filter((user: any) => allowedRoles.includes(user.role));
   };
 
-  // Get allowed statuses for current user
+  // Get allowed statuses for current user - dynamic based on workflowStatus field
   const getAllowedStatuses = (): EnquiryStatus[] => {
     if (!currentUser) return [];
-    // Director, Superadmin, and Salesperson have access to all statuses
-    if (currentUser.role === 'director' || currentUser.role === 'superadmin' || currentUser.role === 'salesman') {
+    
+    // Director and Superadmin always have access to all statuses
+    if (currentUser.role === 'director' || currentUser.role === 'superadmin') {
       return STATUS_LIST;
     }
+    
+    // Get workflow statuses from user (supports both camelCase and snake_case)
+    let userWorkflowStatuses = (currentUser as any).workflowStatus || (currentUser as any).workflow_status;
+    
+    // Handle JSON serialization - parse if it's a string
+    if (userWorkflowStatuses) {
+      if (typeof userWorkflowStatuses === 'string') {
+        try {
+          userWorkflowStatuses = JSON.parse(userWorkflowStatuses);
+        } catch (e) {
+          console.error('Error parsing workflowStatus:', e);
+          userWorkflowStatuses = null;
+        }
+      }
+    }
+    
+    // If user has workflowStatus configured, use it (dynamic)
+    if (userWorkflowStatuses && Array.isArray(userWorkflowStatuses) && userWorkflowStatuses.length > 0) {
+      // Validate that all statuses are valid EnquiryStatus values and sort by STATUS_LIST order
+      const validStatuses = userWorkflowStatuses.filter((status: string) => 
+        STATUS_LIST.includes(status as EnquiryStatus)
+      ) as EnquiryStatus[];
+      
+      // Sort statuses according to STATUS_LIST order to maintain workflow sequence
+      return validStatuses.sort((a, b) => {
+        const indexA = STATUS_LIST.indexOf(a);
+        const indexB = STATUS_LIST.indexOf(b);
+        return indexA - indexB;
+      });
+    }
+    
+    // Fallback to default role-based mapping if workflowStatus is not set
     return ROLE_STATUS_MAPPING[currentUser.role] || [];
   };
 
@@ -182,9 +215,15 @@ export default function KanbanBoard() {
   const returnStatuses = getReturnStatuses();
 
   // Get all statuses to show (allowed + return statuses for workers)
-  const statusesToShow = canReturnToSalesperson 
+  // Remove duplicates and sort according to STATUS_LIST order
+  const statusesToShow = (canReturnToSalesperson 
     ? [...allowedStatuses, ...returnStatuses].filter((v, i, a) => a.indexOf(v) === i)
-    : allowedStatuses;
+    : allowedStatuses
+  ).sort((a, b) => {
+    const indexA = STATUS_LIST.indexOf(a);
+    const indexB = STATUS_LIST.indexOf(b);
+    return indexA - indexB;
+  });
 
   // Group enquiries by status
   const columns = statusesToShow.reduce((acc, status) => {
@@ -210,7 +249,7 @@ export default function KanbanBoard() {
     return (
       <MainLayout>
         <Header title="Task Board" subtitle="Loading..." />
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6">
           <div className="text-center py-12">Loading tasks...</div>
         </div>
       </MainLayout>
@@ -317,6 +356,29 @@ export default function KanbanBoard() {
 
       // For salesperson/admin/director - normal assignment
       if (canDragDrop) {
+        // Restrict movements for salespersons only
+        if (isSalesperson) {
+          const oldStatus = enquiry.status || source.droppableId as EnquiryStatus;
+          const allowedTransitions: Record<EnquiryStatus, EnquiryStatus[]> = {
+            'Enquiry': ['Design', 'BOQ', 'ReadyForProduction'],
+            'BOQ': ['ReadyForProduction'],
+            'Design': [], // Cannot move from Design (designer returns it)
+            'ReadyForProduction': [], // Cannot move from ReadyForProduction
+            'PurchaseWaiting': [],
+            'InProduction': [],
+            'ProductionComplete': [],
+            'Hotdip': [],
+            'ReadyForDispatch': [],
+            'Dispatched': []
+          };
+
+          const allowed = allowedTransitions[oldStatus] || [];
+          if (!allowed.includes(newStatus)) {
+            toast.error(`Cannot move from ${oldStatus} to ${newStatus}. Salesperson can only move: Enquiry→Design, Enquiry→BOQ, Enquiry→ReadyForProduction, or BOQ→ReadyForProduction`);
+            return;
+          }
+        }
+
         // Get users who can handle this status
         const assignableUsers = getUsersByStatus(newStatus);
         const assignedUserId = assignableUsers[0]?.id || enquiry.currentAssignedPerson || enquiry.current_assigned_person;
@@ -378,7 +440,7 @@ export default function KanbanBoard() {
         }
       />
 
-      <div className="p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         {enquiries.length === 0 ? (
           <Card className="py-12">
             <CardContent className="text-center">

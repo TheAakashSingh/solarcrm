@@ -344,10 +344,10 @@ router.post('/', authenticate, async (req, res, next) => {
       deliveryAddress
     } = req.body;
 
-    if (!clientId || !materialType || !enquiryDetail || !enquiryAmount || !deliveryAddress) {
+    if (!clientId || !materialType || !enquiryDetail || !enquiryAmount) {
       return res.status(400).json({
         success: false,
-        message: 'Required fields are missing'
+        message: 'Client, material type, enquiry detail, and enquiry amount are required'
       });
     }
 
@@ -366,7 +366,7 @@ router.post('/', authenticate, async (req, res, next) => {
         enquiryAmount: parseFloat(enquiryAmount),
         purchaseDetail,
         expectedDispatchDate: expectedDispatchDate ? new Date(expectedDispatchDate) : null,
-        deliveryAddress,
+        deliveryAddress: deliveryAddress || null,
         enquiryBy: req.user.id,
         currentAssignedPerson: req.user.id,
         status: 'Enquiry',

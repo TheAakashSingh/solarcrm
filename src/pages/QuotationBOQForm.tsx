@@ -112,53 +112,53 @@ export default function QuotationBOQForm() {
           const quotationRes = await quotationsAPI.getById(quotationId);
           if (quotationRes.success && quotationRes.data) {
             const existingQuotation = quotationRes.data;
-            setSavedDocumentId(existingQuotation.id);
+            setSavedDocumentId((existingQuotation as any).id);
             
             // Get enquiry from quotation
-            const qEnquiryId = existingQuotation.enquiryId || existingQuotation.enquiry_id;
+            const qEnquiryId = (existingQuotation as any).enquiryId || (existingQuotation as any).enquiry_id;
             if (qEnquiryId) {
               setEnquiryId(qEnquiryId); // Store enquiryId in state
               const enquiryRes = await enquiriesAPI.getById(qEnquiryId);
               if (enquiryRes.success && enquiryRes.data) {
                 setExistingEnquiry(enquiryRes.data);
               }
-            } else if (existingQuotation.enquiry) {
-              setExistingEnquiry(existingQuotation.enquiry);
-              if (existingQuotation.enquiry.id) {
-                setEnquiryId(existingQuotation.enquiry.id); // Store enquiryId from enquiry object
+            } else if ((existingQuotation as any).enquiry) {
+              setExistingEnquiry((existingQuotation as any).enquiry);
+              if ((existingQuotation as any).enquiry.id) {
+                setEnquiryId((existingQuotation as any).enquiry.id); // Store enquiryId from enquiry object
               }
             }
             
             // Load existing quotation data
-            if (existingQuotation.orderNo) setOrderNo(existingQuotation.orderNo);
-            if (existingQuotation.nosOfModule) setNosOfModule(existingQuotation.nosOfModule);
-            if (existingQuotation.date) setQuotationDate(format(new Date(existingQuotation.date), 'yyyy-MM-dd'));
-            if (existingQuotation.projectCapacity) setProjectCapacity(existingQuotation.projectCapacity);
-            if (existingQuotation.noOfTable) setNoOfTable(existingQuotation.noOfTable);
-            if (existingQuotation.boqItems && existingQuotation.boqItems.length > 0) {
-              setBoqItems(existingQuotation.boqItems.map((item: any) => ({ ...item, id: item.id || Math.random().toString() })));
+            if ((existingQuotation as any).orderNo) setOrderNo((existingQuotation as any).orderNo);
+            if ((existingQuotation as any).nosOfModule) setNosOfModule((existingQuotation as any).nosOfModule);
+            if ((existingQuotation as any).date) setQuotationDate(format(new Date((existingQuotation as any).date), 'yyyy-MM-dd'));
+            if ((existingQuotation as any).projectCapacity) setProjectCapacity((existingQuotation as any).projectCapacity);
+            if ((existingQuotation as any).noOfTable) setNoOfTable((existingQuotation as any).noOfTable);
+            if ((existingQuotation as any).boqItems && (existingQuotation as any).boqItems.length > 0) {
+              setBoqItems((existingQuotation as any).boqItems.map((item: any) => ({ ...item, id: item.id || Math.random().toString() })));
             }
-            if (existingQuotation.hardwareItems && existingQuotation.hardwareItems.length > 0) {
-              setHardwareItems(existingQuotation.hardwareItems.map((item: any) => ({ ...item, id: item.id || Math.random().toString() })));
+            if ((existingQuotation as any).hardwareItems && (existingQuotation as any).hardwareItems.length > 0) {
+              setHardwareItems((existingQuotation as any).hardwareItems.map((item: any) => ({ ...item, id: item.id || Math.random().toString() })));
             }
             // Load summary fields
-            if (existingQuotation.totalWeight) setTotalWeight(existingQuotation.totalWeight);
-            if (existingQuotation.purchaseRate) setPurchaseRate(existingQuotation.purchaseRate);
-            if (existingQuotation.weightIncreaseAfterHDG) setWeightIncreaseAfterHDG(existingQuotation.weightIncreaseAfterHDG);
-            if (existingQuotation.costing) setCosting(existingQuotation.costing);
-            if (existingQuotation.totalWeightAfterHotDip) setTotalWeightAfterHotDip(existingQuotation.totalWeightAfterHotDip);
-            if (existingQuotation.ratePerKg) setRatePerKg(existingQuotation.ratePerKg);
-            if (existingQuotation.boqGrossProfit) setBoqGrossProfit(existingQuotation.boqGrossProfit);
-            if (existingQuotation.boqProfitPercent) setBoqProfitPercent(existingQuotation.boqProfitPercent);
-            if (existingQuotation.totalBoqAmount) setTotalBoqAmount(existingQuotation.totalBoqAmount);
-            if (existingQuotation.totalHardwareCost) setTotalHardwareCost(existingQuotation.totalHardwareCost);
-            if (existingQuotation.hardwarePurchaseTotal) setHardwarePurchaseTotal(existingQuotation.hardwarePurchaseTotal);
-            if (existingQuotation.hardwareGrossProfit) setHardwareGrossProfit(existingQuotation.hardwareGrossProfit);
-            if (existingQuotation.totalStructurePlusHardware) setTotalStructurePlusHardware(existingQuotation.totalStructurePlusHardware);
-            if (existingQuotation.gst) setGst(existingQuotation.gst);
-            if (existingQuotation.totalGrossProfit) setTotalGrossProfit(existingQuotation.totalGrossProfit);
-            if (existingQuotation.totalProfitPercent) setTotalProfitPercent(existingQuotation.totalProfitPercent);
-            if (existingQuotation.grandTotal) setGrandTotal(existingQuotation.grandTotal);
+            if ((existingQuotation as any).totalWeight) setTotalWeight((existingQuotation as any).totalWeight);
+            if ((existingQuotation as any).purchaseRate) setPurchaseRate((existingQuotation as any).purchaseRate);
+            if ((existingQuotation as any).weightIncreaseAfterHDG) setWeightIncreaseAfterHDG((existingQuotation as any).weightIncreaseAfterHDG);
+            if ((existingQuotation as any).costing) setCosting((existingQuotation as any).costing);
+            if ((existingQuotation as any).totalWeightAfterHotDip) setTotalWeightAfterHotDip((existingQuotation as any).totalWeightAfterHotDip);
+            if ((existingQuotation as any).ratePerKg) setRatePerKg((existingQuotation as any).ratePerKg);
+            if ((existingQuotation as any).boqGrossProfit) setBoqGrossProfit((existingQuotation as any).boqGrossProfit);
+            if ((existingQuotation as any).boqProfitPercent) setBoqProfitPercent((existingQuotation as any).boqProfitPercent);
+            if ((existingQuotation as any).totalBoqAmount) setTotalBoqAmount((existingQuotation as any).totalBoqAmount);
+            if ((existingQuotation as any).totalHardwareCost) setTotalHardwareCost((existingQuotation as any).totalHardwareCost);
+            if ((existingQuotation as any).hardwarePurchaseTotal) setHardwarePurchaseTotal((existingQuotation as any).hardwarePurchaseTotal);
+            if ((existingQuotation as any).hardwareGrossProfit) setHardwareGrossProfit((existingQuotation as any).hardwareGrossProfit);
+            if ((existingQuotation as any).totalStructurePlusHardware) setTotalStructurePlusHardware((existingQuotation as any).totalStructurePlusHardware);
+            if ((existingQuotation as any).gst) setGst((existingQuotation as any).gst);
+            if ((existingQuotation as any).totalGrossProfit) setTotalGrossProfit((existingQuotation as any).totalGrossProfit);
+            if ((existingQuotation as any).totalProfitPercent) setTotalProfitPercent((existingQuotation as any).totalProfitPercent);
+            if ((existingQuotation as any).grandTotal) setGrandTotal((existingQuotation as any).grandTotal);
             
             setLoading(false);
             return;
@@ -389,7 +389,7 @@ export default function QuotationBOQForm() {
       try {
         const res = await quotationsAPI.getById(savedDocumentId);
         if (res.success && res.data) {
-          finalEnquiryId = res.data.enquiryId || res.data.enquiry_id;
+          finalEnquiryId = (res.data as any).enquiryId || (res.data as any).enquiry_id;
         }
       } catch (e) {
         console.error('Error fetching quotation:', e);

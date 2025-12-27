@@ -166,7 +166,7 @@ export default function Clients() {
                         required 
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input 
@@ -175,7 +175,6 @@ export default function Clients() {
                           placeholder="email@example.com" 
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          required 
                         />
                       </div>
                       <div className="space-y-2">

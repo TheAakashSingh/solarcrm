@@ -197,8 +197,13 @@ docker compose ps
 ### 8. Run Database Migrations
 
 ```bash
-# Migrations should run automatically, but if needed:
+# Migrations run automatically on container start via docker-compose command
+# But you can also run manually if needed:
 docker compose exec backend npx prisma migrate deploy
+
+# Note: Prisma client is automatically generated during Docker build
+# If you need to regenerate it manually (usually not needed):
+docker compose exec backend npx prisma generate
 
 # Seed database (optional - only for initial setup)
 docker compose exec backend npm run prisma:seed
@@ -266,11 +271,17 @@ curl http://localhost:80/health
 git pull
 
 # Rebuild and restart
+# Note: Prisma client is automatically generated during Docker build (see backend/Dockerfile)
 docker compose up -d --build
 
-# Run migrations if needed
+# Run migrations if schema changed (run automatically on container start, but can run manually)
 docker compose exec backend npx prisma migrate deploy
+
+# If Prisma schema changed and client wasn't regenerated during build, regenerate manually:
+docker compose exec backend npx prisma generate
 ```
+
+**Note:** The Prisma client is automatically generated during the Docker build process (in the `builder` stage of `backend/Dockerfile`). You typically don't need to run `npx prisma generate` manually unless there was a build issue.
 
 ### Backup Database
 

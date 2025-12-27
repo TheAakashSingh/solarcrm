@@ -15,6 +15,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to normalize workflowStatus
+const normalizeWorkflowStatus = (workflowStatus: any): string[] | null => {
+  if (!workflowStatus) return null;
+  if (Array.isArray(workflowStatus)) return workflowStatus;
+  if (typeof workflowStatus === 'string') {
+    try {
+      const parsed = JSON.parse(workflowStatus);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+// Helper function to normalize user object
+const normalizeUser = (user: any): User => {
+  if (!user) return user;
+  const normalized = { ...user };
+  const workflowStatus = normalizeWorkflowStatus(user.workflowStatus || user.workflow_status);
+  if (workflowStatus !== null) {
+    normalized.workflowStatus = workflowStatus;
+    normalized.workflow_status = workflowStatus;
+  }
+  return normalized as User;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,13 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token && savedUser) {
       try {
         const user = JSON.parse(savedUser);
-        setCurrentUser(user);
+        setCurrentUser(normalizeUser(user));
         // Verify token is still valid
         authAPI.getMe()
           .then((response) => {
             if (response.success && response.data) {
-              setCurrentUser(response.data);
-              localStorage.setItem('currentUser', JSON.stringify(response.data));
+              const normalizedUser = normalizeUser(response.data);
+              setCurrentUser(normalizedUser);
+              localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
               // Connect socket
               connectSocket(token);
             } else {
@@ -67,10 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authAPI.login(email, password);
       
       if (response.success && response.data) {
-        const { user, token } = response.data;
-        setCurrentUser(user);
+        const { user, token } = response.data as { user: any; token: string };
+        const normalizedUser = normalizeUser(user);
+        setCurrentUser(normalizedUser);
         localStorage.setItem('token', token);
-        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
         
         // Connect socket
         connectSocket(token);
@@ -93,9 +122,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCurrentUser = (user: User | null) => {
-    setCurrentUser(user);
     if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
+      const normalizedUser = normalizeUser(user);
+      setCurrentUser(normalizedUser);
+      localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
+    } else {
+      setCurrentUser(null);
     }
   };
 

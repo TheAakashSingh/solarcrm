@@ -8,7 +8,7 @@ import {
   clientsAPI, 
   usersAPI 
 } from '@/lib/api';
-import { STATUS_LIST, MATERIAL_TYPES, EnquiryStatus, MaterialType } from '@/types/crm';
+import { STATUS_LIST, MATERIAL_TYPES, EnquiryStatus, MaterialType, ROLE_STATUS_MAPPING } from '@/types/crm';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,8 +61,8 @@ export default function EnquiryForm() {
           usersAPI.getByRole('salesman')
         ]);
 
-        if (clientsRes.success) setClients(clientsRes.data || []);
-        if (salesRes.success) setSalesUsers(salesRes.data || []);
+        if (clientsRes.success) setClients(clientsRes.data as any[] || []);
+        if (salesRes.success) setSalesUsers(salesRes.data as any[] || []);
 
         // Fetch existing enquiry if editing
         if (id) {
@@ -71,18 +71,18 @@ export default function EnquiryForm() {
             const enquiry = enquiryRes.data;
             setExistingEnquiry(enquiry);
             setFormData({
-              client_id: enquiry.clientId || enquiry.client_id || '',
-              material_type: enquiry.materialType || enquiry.material_type || '' as MaterialType,
-              enquiry_detail: enquiry.enquiryDetail || enquiry.enquiry_detail || '',
-              enquiry_by: enquiry.enquiryBy || enquiry.enquiry_by || currentUser?.id || '',
-              enquiry_amount: (enquiry.enquiryAmount || enquiry.enquiry_amount || 0).toString(),
-              purchase_detail: enquiry.purchaseDetail || enquiry.purchase_detail || '',
-              expected_dispatch_date: enquiry.expectedDispatchDate 
-                ? new Date(enquiry.expectedDispatchDate).toISOString().split('T')[0]
-                : enquiry.expected_dispatch_date?.split('T')[0] || '',
-              delivery_address: enquiry.deliveryAddress || enquiry.delivery_address || '',
-              status: enquiry.status || 'Enquiry' as EnquiryStatus,
-              current_assigned_person: enquiry.currentAssignedPerson || enquiry.current_assigned_person || currentUser?.id || '',
+              client_id: (enquiry as any).clientId || (enquiry as any).client_id || '',
+              material_type: (enquiry as any).materialType || (enquiry as any).material_type || '' as MaterialType,
+              enquiry_detail: (enquiry as any).enquiryDetail || (enquiry as any).enquiry_detail || '',
+              enquiry_by: (enquiry as any).enquiryBy || (enquiry as any).enquiry_by || currentUser?.id || '',
+              enquiry_amount: ((enquiry as any).enquiryAmount || (enquiry as any).enquiry_amount || 0).toString(),
+              purchase_detail: (enquiry as any).purchaseDetail || (enquiry as any).purchase_detail || '',
+              expected_dispatch_date: (enquiry as any).expectedDispatchDate 
+                ? new Date((enquiry as any).expectedDispatchDate).toISOString().split('T')[0]
+                : (enquiry as any).expected_dispatch_date?.split('T')[0] || '',
+              delivery_address: (enquiry as any).deliveryAddress || (enquiry as any).delivery_address || '',
+              status: (enquiry as any).status || 'Enquiry' as EnquiryStatus,
+              current_assigned_person: (enquiry as any).currentAssignedPerson || (enquiry as any).current_assigned_person || currentUser?.id || '',
               note: ''
             });
           }
@@ -128,9 +128,19 @@ export default function EnquiryForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.client_id || !formData.material_type || !formData.enquiry_detail || !formData.delivery_address) {
+    if (!formData.client_id || !formData.material_type || !formData.enquiry_detail) {
       toast.error('Please fill in all required fields');
       return;
+    }
+
+    // Prevent editing if enquiry is assigned to another user (except admin/director)
+    if (isEdit && existingEnquiry && 
+        currentUser?.role !== 'superadmin' && currentUser?.role !== 'director') {
+      const assignedTo = existingEnquiry.currentAssignedPerson || existingEnquiry.current_assigned_person;
+      if (assignedTo && assignedTo !== currentUser?.id) {
+        toast.error('Cannot edit enquiry assigned to another user');
+        return;
+      }
     }
 
     try {
@@ -191,6 +201,12 @@ export default function EnquiryForm() {
     );
   }
 
+  // Check if enquiry is assigned to another user (cannot edit except admin/director)
+  const isAssignedToAnother = isEdit && existingEnquiry && 
+    currentUser?.role !== 'superadmin' && currentUser?.role !== 'director' &&
+    (existingEnquiry.currentAssignedPerson || existingEnquiry.current_assigned_person) &&
+    (existingEnquiry.currentAssignedPerson || existingEnquiry.current_assigned_person) !== currentUser?.id;
+
   return (
     <MainLayout>
       <Header 
@@ -210,7 +226,7 @@ export default function EnquiryForm() {
         </Button>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-2">
             {/* Client & Basic Info */}
             <Card>
               <CardHeader>
@@ -320,11 +336,52 @@ export default function EnquiryForm() {
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUS_LIST.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status.replace(/([A-Z])/g, ' $1').trim()}
-                        </SelectItem>
-                      ))}
+                      {(() => {
+                        // Dynamic status list based on user's workflowStatus
+                        let allowedStatuses: EnquiryStatus[] = STATUS_LIST;
+                        
+                        // Director and Superadmin see all statuses
+                        if (currentUser?.role === 'director' || currentUser?.role === 'superadmin') {
+                          allowedStatuses = STATUS_LIST;
+                        } else if (currentUser) {
+                          // Get workflow statuses from user (supports both camelCase and snake_case)
+                          let userWorkflowStatuses = (currentUser as any).workflowStatus || (currentUser as any).workflow_status;
+                          
+                          // Handle JSON serialization - parse if it's a string
+                          if (userWorkflowStatuses) {
+                            if (typeof userWorkflowStatuses === 'string') {
+                              try {
+                                userWorkflowStatuses = JSON.parse(userWorkflowStatuses);
+                              } catch (e) {
+                                console.error('Error parsing workflowStatus:', e);
+                                userWorkflowStatuses = null;
+                              }
+                            }
+                          }
+                          
+                          // If user has workflowStatus configured, use it (dynamic)
+                          if (userWorkflowStatuses && Array.isArray(userWorkflowStatuses) && userWorkflowStatuses.length > 0) {
+                            const validStatuses = userWorkflowStatuses.filter((status: string) => 
+                              STATUS_LIST.includes(status as EnquiryStatus)
+                            ) as EnquiryStatus[];
+                            // Sort statuses according to STATUS_LIST order to maintain workflow sequence
+                            allowedStatuses = validStatuses.sort((a, b) => {
+                              const indexA = STATUS_LIST.indexOf(a);
+                              const indexB = STATUS_LIST.indexOf(b);
+                              return indexA - indexB;
+                            });
+                          } else {
+                            // Fallback to default role-based mapping
+                            allowedStatuses = ROLE_STATUS_MAPPING[currentUser.role] || [];
+                          }
+                        }
+                        
+                        return allowedStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status.replace(/([A-Z])/g, ' $1').trim()}
+                          </SelectItem>
+                        ));
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>

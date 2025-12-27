@@ -51,7 +51,12 @@ const managementNavigation = [
   { name: 'SMTP Settings', href: '/smtp', icon: Mail, key: 'smtp' },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, login, logout } = useAuth();
@@ -79,6 +84,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               to={item.href}
+              onClick={onClose}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                 isActive 
@@ -99,7 +105,12 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-white border-r border-gray-200 shadow-sm">
+    <aside
+      className={cn(
+        'fixed left-0 top-0 z-40 h-screen w-64 bg-white border-r border-gray-200 shadow-sm transition-transform duration-300 ease-in-out',
+        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      )}
+    >
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-6">
@@ -141,6 +152,7 @@ export function Sidebar() {
         <div className="border-t border-gray-200 p-3 space-y-2">
           <Link
             to="/profile"
+            onClick={onClose}
             className={cn(
               'flex items-center gap-3 rounded-lg p-2 hover:bg-gray-50 transition-colors',
               location.pathname === '/profile' && 'bg-orange-50'
