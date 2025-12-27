@@ -213,17 +213,18 @@ router.get('/stats', authenticate, async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        // Basic counts
-        totalEnquiries: isAdminOrDirector ? totalEnquiries : myEnquiries.length,
+        // Basic counts - always return both for frontend flexibility
+        totalEnquiries: totalEnquiries, // All enquiries (for admin/director) or filtered (for others)
+        myEnquiriesCount: myEnquiries.length, // User's enquiries count
         totalClients,
         totalQuotations,
         totalInvoices,
         totalUsers,
         totalRevenue: revenueData._sum.grandTotal || 0,
         
-        // Values
-        totalValue: isAdminOrDirector ? totalValue : myTotalValue,
-        myTotalValue,
+        // Values - always return both
+        totalValue: isAdminOrDirector ? totalValue : myTotalValue, // All value or user's value
+        myTotalValue, // User's specific value
         avgOrderValue,
         
         // Metrics

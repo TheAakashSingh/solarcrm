@@ -127,26 +127,29 @@ export default function Dashboard() {
     );
   }
 
-  // Calculate metrics from stats - use backend stats first, fallback to frontend calculations
-  const totalEnquiries = stats?.totalEnquiries || enquiries.length;
-  const totalValue = stats?.totalValue || enquiries.reduce((sum: number, e: any) => sum + ((e.enquiryAmount || e.enquiry_amount) || 0), 0);
-  const pendingEnquiries = stats?.pendingEnquiries || stats?.pendingTasks || enquiries.filter((e: any) => 
-    !['Dispatched'].includes(e.status)
-  ).length;
-  const dispatchedThisMonth = stats?.dispatchedThisMonth || enquiries.filter((e: any) => 
-    e.status === 'Dispatched'
-  ).length;
-  const confirmedOrders = stats?.confirmedOrders || enquiries.filter((e: any) => (e.orderNumber || e.order_number) !== null).length;
+  // Calculate metrics from stats - ALWAYS use backend stats (they have full data, not limited to 100)
+  // The enquiries array is limited to 100, so we can't use it for accurate counts
+  const totalEnquiries = stats?.totalEnquiries ?? 0;
+  const totalValue = stats?.totalValue ?? 0;
+  const pendingEnquiries = stats?.pendingEnquiries ?? stats?.pendingTasks ?? 0;
+  const dispatchedThisMonth = stats?.dispatchedThisMonth ?? 0;
+  const confirmedOrders = stats?.confirmedOrders ?? 0;
   const conversionRate = stats?.conversionRate !== undefined 
     ? stats.conversionRate.toString() 
-    : (totalEnquiries > 0 ? (confirmedOrders / totalEnquiries * 100).toFixed(1) : '0');
+    : (totalEnquiries > 0 ? ((confirmedOrders / totalEnquiries) * 100).toFixed(1) : '0');
   
-  // User-specific enquiries
+  // User-specific enquiries - use backend stats for accurate counts
+  // For display purposes, filter the limited enquiries array, but use stats for counts
   const myEnquiries = isAdminOrDirector ? enquiries : enquiries.filter((e: any) => 
     (e.enquiryBy === currentUser?.id || e.enquiry_by === currentUser?.id) || 
     (e.currentAssignedPerson === currentUser?.id || e.current_assigned_person === currentUser?.id)
   );
-  const myTotalValue = stats?.myTotalValue || myEnquiries.reduce((sum: number, e: any) => sum + ((e.enquiryAmount || e.enquiry_amount) || 0), 0);
+  // Use backend stats for accurate myTotalValue (not limited to 100 enquiries)
+  const myTotalValue = stats?.myTotalValue ?? 0;
+  // For myEnquiries count, use backend stats (myEnquiriesCount) if available, otherwise fallback
+  const myEnquiriesCount = isAdminOrDirector 
+    ? totalEnquiries 
+    : (stats?.myEnquiriesCount ?? stats?.totalEnquiries ?? myEnquiries.length);
   
   // Designer's active tasks
   const myTasks = isDesigner ? enquiries.filter((e: any) => 
@@ -279,17 +282,15 @@ export default function Dashboard() {
             <>
               <MetricCard
                 title={isAdminOrDirector ? "Total Enquiries" : "My Enquiries"}
-                value={isAdminOrDirector ? totalEnquiries : myEnquiries.length}
+                value={isAdminOrDirector ? totalEnquiries : myEnquiriesCount}
                 subtitle={isAdminOrDirector ? "All time" : "Assigned to me"}
                 icon={<ClipboardList className="h-5 w-5" />}
-                trend={isAdminOrDirector ? { value: 12, isPositive: true } : undefined}
               />
               <MetricCard
                 title={isAdminOrDirector ? "Total Order Value" : "My Order Value"}
                 value={formatCurrency(isAdminOrDirector ? totalValue : myTotalValue)}
                 subtitle={isAdminOrDirector ? "Pipeline value" : "My pipeline"}
                 icon={<TrendingUp className="h-5 w-5" />}
-                trend={isAdminOrDirector ? { value: 8, isPositive: true } : undefined}
               />
               {isAdminOrDirector && (
                 <MetricCard
@@ -311,7 +312,6 @@ export default function Dashboard() {
                 value={dispatchedThisMonth}
                 subtitle="This month"
                 icon={<CheckCircle2 className="h-5 w-5" />}
-                trend={{ value: 5, isPositive: true }}
               />
             </>
           )}
@@ -498,27 +498,46 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
-                <Clock className="h-5 w-5 text-orange-600 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-orange-900">2 orders due today</p>
-                  <p className="text-xs text-orange-700">Dispatch pending</p>
+              {/* Dynamic Alerts from Backend Stats */}
+              {stats?.alerts?.ordersDueToday > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
+                  <Clock className="h-5 w-5 text-orange-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-900">
+                      {stats.alerts.ordersDueToday} {stats.alerts.ordersDueToday === 1 ? 'order' : 'orders'} due today
+                    </p>
+                    <p className="text-xs text-orange-700">Dispatch pending</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <Package className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-blue-900">3 in production</p>
-                  <p className="text-xs text-blue-700">On schedule</p>
+              )}
+              {stats?.alerts?.inProduction > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                  <Package className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      {stats.alerts.inProduction} in production
+                    </p>
+                    <p className="text-xs text-blue-700">On schedule</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 border border-purple-200">
-                <Truck className="h-5 w-5 text-purple-600 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-purple-900">1 ready for dispatch</p>
-                  <p className="text-xs text-purple-700">Awaiting logistics</p>
+              )}
+              {stats?.alerts?.readyForDispatch > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 border border-purple-200">
+                  <Truck className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-900">
+                      {stats.alerts.readyForDispatch} {stats.alerts.readyForDispatch === 1 ? 'order' : 'orders'} ready for dispatch
+                    </p>
+                    <p className="text-xs text-purple-700">Awaiting logistics</p>
+                  </div>
                 </div>
-              </div>
+              )}
+              {/* Show message if no alerts */}
+              {(!stats?.alerts || (stats.alerts.ordersDueToday === 0 && stats.alerts.inProduction === 0 && stats.alerts.readyForDispatch === 0)) && (
+                <div className="flex items-center justify-center p-6 text-center">
+                  <p className="text-sm text-gray-500">No active alerts</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
