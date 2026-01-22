@@ -4,113 +4,35 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('🔐 Updating user passwords to strong passwords...');
 
-  // Create users
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  // Define strong passwords per role (change as needed)
+  const users = [
+    { email: 'admin@solarsync.com', password: 'Admin@2026#Secure!' },
+    { email: 'director@solarsync.com', password: 'Director@2026#Secure!' },
+    { email: 'salesman@solarsync.com', password: 'Sales@2026#Secure!' },
+    { email: 'designer@solarsync.com', password: 'Design@2026#Secure!' },
+    { email: 'production@solarsync.com', password: 'Prod@2026#Secure!' },
+    { email: 'purchase@solarsync.com', password: 'Purchase@2026#Secure!' },
+  ];
 
-  const superadmin = await prisma.user.upsert({
-    where: { email: 'admin@solarsync.com' },
-    update: {},
-    create: {
-      name: 'Super Admin',
-      email: 'admin@solarsync.com',
-      password: hashedPassword,
-      role: 'superadmin',
-      workflowStatus: [
-        'Enquiry', 'Design', 'BOQ', 'ReadyForProduction',
-        'PurchaseWaiting', 'InProduction', 'ProductionComplete',
-        'Hotdip', 'ReadyForDispatch', 'Dispatched'
-      ]
-    }
-  });
+  for (const user of users) {
+    const hashedPassword = await bcrypt.hash(user.password, 12);
 
-  const director = await prisma.user.upsert({
-    where: { email: 'director@solarsync.com' },
-    update: {},
-    create: {
-      name: 'Director',
-      email: 'director@solarsync.com',
-      password: hashedPassword,
-      role: 'director',
-      workflowStatus: [
-        'Enquiry', 'Design', 'BOQ', 'ReadyForProduction',
-        'PurchaseWaiting', 'InProduction', 'ProductionComplete',
-        'Hotdip', 'ReadyForDispatch', 'Dispatched'
-      ]
-    }
-  });
+    await prisma.user.update({
+      where: { email: user.email },
+      data: { password: hashedPassword },
+    });
 
-  const salesman = await prisma.user.upsert({
-    where: { email: 'salesman@solarsync.com' },
-    update: {},
-    create: {
-      name: 'Sales Person',
-      email: 'salesman@solarsync.com',
-      password: hashedPassword,
-      role: 'salesman',
-      workflowStatus: [
-        'Enquiry', 'Design', 'BOQ', 'ReadyForProduction',
-        'PurchaseWaiting', 'InProduction', 'ProductionComplete',
-        'Hotdip', 'ReadyForDispatch', 'Dispatched'
-      ]
-    }
-  });
+    console.log(`✅ Password updated for ${user.email}`);
+  }
 
-  const designer = await prisma.user.upsert({
-    where: { email: 'designer@solarsync.com' },
-    update: {},
-    create: {
-      name: 'Designer',
-      email: 'designer@solarsync.com',
-      password: hashedPassword,
-      role: 'designer',
-      workflowStatus: ['Design']
-    }
-  });
-
-  const production = await prisma.user.upsert({
-    where: { email: 'production@solarsync.com' },
-    update: {},
-    create: {
-      name: 'Production Lead',
-      email: 'production@solarsync.com',
-      password: hashedPassword,
-      role: 'production',
-      workflowStatus: [
-        'ReadyForProduction', 'InProduction', 'ProductionComplete',
-        'Hotdip', 'ReadyForDispatch', 'Dispatched'
-      ]
-    }
-  });
-
-  const purchase = await prisma.user.upsert({
-    where: { email: 'purchase@solarsync.com' },
-    update: {},
-    create: {
-      name: 'Purchase Manager',
-      email: 'purchase@solarsync.com',
-      password: hashedPassword,
-      role: 'purchase',
-      workflowStatus: ['PurchaseWaiting']
-    }
-  });
-
-  console.log('✅ Users created');
-
-  console.log('🎉 Database seed completed!');
-  console.log('\n📝 Default login credentials:');
-  console.log('   Super Admin: admin@solarsync.com / password123');
-  console.log('   Director: director@solarsync.com / password123');
-  console.log('   Salesman: salesman@solarsync.com / password123');
-  console.log('   Designer: designer@solarsync.com / password123');
-  console.log('   Production: production@solarsync.com / password123');
-  console.log('   Purchase: purchase@solarsync.com / password123');
+  console.log('🎉 All passwords updated successfully');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error seeding database:', e);
+    console.error('❌ Error updating passwords:', e);
     process.exit(1);
   })
   .finally(async () => {
