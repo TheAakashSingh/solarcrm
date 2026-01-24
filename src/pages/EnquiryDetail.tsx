@@ -51,7 +51,9 @@ import {
   Eye,
   Download,
   CheckCircle2,
-  Hash
+  Hash,
+  Paperclip,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEnquirySocket } from '@/lib/hooks/useSocket';
@@ -629,20 +631,21 @@ export default function EnquiryDetail() {
                     return (
                       <div className="space-y-2">
                         {relatedQuotations.map((quo: any) => (
-                          <div key={quo.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <div>
-                                <p className="text-sm font-medium">{quo.number}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(new Date(quo.date), 'dd MMM yyyy')} • {formatCurrency(quo.grandTotal || quo.amount)}
-                                </p>
+                          <div key={quo.id} className="border rounded-lg hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center justify-between p-3">
+                              <div className="flex items-center gap-3">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-sm font-medium">{quo.number}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {format(new Date(quo.date), 'dd MMM yyyy')} • {formatCurrency(quo.grandTotal || quo.amount)}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={quo.status === 'accepted' ? 'default' : 'secondary'} className="capitalize">
-                                {quo.status}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={quo.status === 'accepted' ? 'default' : 'secondary'} className="capitalize">
+                                  {quo.status}
+                                </Badge>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
@@ -743,11 +746,44 @@ export default function EnquiryDetail() {
                                   }
                                 }}
                               >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
+                                <Download className="h-3 w-3 mr-1" />
+                                PDF
                               </Button>
                             </div>
                           </div>
+                          {/* Show Attachments if any */}
+                          {quo.attachments && Array.isArray(quo.attachments) && quo.attachments.length > 0 && (
+                            <div className="px-3 pb-3 border-t pt-2 mt-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                                <p className="text-xs font-medium text-muted-foreground">Attached Files ({quo.attachments.length})</p>
+                              </div>
+                              <div className="space-y-1.5">
+                                {quo.attachments.map((attachment: any) => (
+                                  <div key={attachment.id} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                      <span className="font-medium truncate">{attachment.fileName}</span>
+                                      <span className="text-muted-foreground text-[10px]">
+                                        • {attachment.uploader?.name || 'Unknown'} • {format(new Date(attachment.uploadedAt), 'dd MMM')}
+                                      </span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2"
+                                      onClick={() => {
+                                        window.open(attachment.fileUrl, '_blank');
+                                      }}
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                         ))}
                       </div>
                     );

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { enquiriesAPI, clientsAPI, quotationsAPI, smtpAPI } from '@/lib/api';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, Send, Plus, Trash2, Loader2, Eye, Download } from 'lucide-react';
+import { ArrowLeft, Save, Send, Plus, Trash2, Loader2, Eye, Download, Upload, FileText, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { downloadQuotationBOQPDF, viewQuotationBOQPDF, QuotationBOQData } from '@/lib/pdfGenerator';
 import {
@@ -67,6 +67,8 @@ export default function QuotationBOQForm() {
   const [sendEmailDialogOpen, setSendEmailDialogOpen] = useState(false);
   const [smtpConfigs, setSmtpConfigs] = useState<any[]>([]);
   const [selectedSmtpConfig, setSelectedSmtpConfig] = useState<string>('');
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
   
   // Header fields
   const [orderNo, setOrderNo] = useState('');
@@ -232,6 +234,23 @@ export default function QuotationBOQForm() {
 
     fetchData();
   }, [enquiryIdFromParams, quotationId]);
+
+  // Fetch attachments when quotation is loaded
+  useEffect(() => {
+    const fetchAttachments = async () => {
+      if (savedDocumentId) {
+        try {
+          const response = await quotationsAPI.getAttachments(savedDocumentId);
+          if (response.success && Array.isArray(response.data)) {
+            setAttachments(response.data);
+          }
+        } catch (error) {
+          console.error('Error fetching attachments:', error);
+        }
+      }
+    };
+    fetchAttachments();
+  }, [savedDocumentId]);
 
   // Fetch SMTP configs when dialog opens
   useEffect(() => {
@@ -973,6 +992,130 @@ export default function QuotationBOQForm() {
             </div>
           </CardContent>
         </Card>
+
+        {/* File Attachments Section - Only for salesmen */}
+        {currentUser?.role === 'salesman' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Quotation Files
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <Label htmlFor="file-upload" className="cursor-pointer">
+                  <Button type="button" variant="outline" asChild disabled={uploadingFile || !savedDocumentId}>
+                    <span>
+                      <Upload className="h-4 w-4 mr-2" />
+                      {uploadingFile ? 'Uploading...' : 'Upload File'}
+                    </span>
+                  </Button>
+                </Label>
+                <Input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !savedDocumentId) return;
+                    
+                    setUploadingFile(true);
+                    try {
+                      // Convert to base64
+                      const base64 = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                      });
+                      
+                      const response = await quotationsAPI.uploadAttachment(savedDocumentId, {
+                        fileName: file.name,
+                        fileUrl: base64,
+                        fileType: file.type
+                      });
+                      
+                      if (response.success) {
+                        toast.success('File uploaded successfully');
+                        setAttachments([...attachments, response.data]);
+                        // Reset input
+                        e.target.value = '';
+                      } else {
+                        toast.error(response.message || 'Failed to upload file');
+                      }
+                    } catch (error: any) {
+                      console.error('Error uploading file:', error);
+                      toast.error(error.message || 'Failed to upload file');
+                    } finally {
+                      setUploadingFile(false);
+                    }
+                  }}
+                  disabled={uploadingFile || !savedDocumentId}
+                />
+                {!savedDocumentId && (
+                  <p className="text-sm text-muted-foreground">Save quotation first to upload files</p>
+                )}
+              </div>
+              
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Uploaded Files</Label>
+                  <div className="space-y-2">
+                    {attachments.map((attachment) => (
+                      <div key={attachment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium">{attachment.fileName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Uploaded by {attachment.uploader?.name || 'Unknown'} • {new Date(attachment.uploadedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              window.open(attachment.fileUrl, '_blank');
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {(attachment.uploadedBy === currentUser?.id || currentUser?.role === 'superadmin' || currentUser?.role === 'director') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                if (confirm('Are you sure you want to delete this file?')) {
+                                  try {
+                                    const response = await quotationsAPI.deleteAttachment(attachment.id);
+                                    if (response.success) {
+                                      toast.success('File deleted successfully');
+                                      setAttachments(attachments.filter(a => a.id !== attachment.id));
+                                    } else {
+                                      toast.error(response.message || 'Failed to delete file');
+                                    }
+                                  } catch (error: any) {
+                                    console.error('Error deleting file:', error);
+                                    toast.error(error.message || 'Failed to delete file');
+                                  }
+                                }
+                              }}
+                            >
+                              <X className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Actions */}
         <div className="flex gap-4">

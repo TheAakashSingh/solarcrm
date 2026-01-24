@@ -7,6 +7,12 @@ import { sendQuotationEmail } from '../utils/emailService.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+function getQuotationAttachmentDelegate() {
+  // If Prisma client hasn't been regenerated yet, this delegate will be undefined
+  // and calling .create/.findMany would crash the server.
+  return prisma.quotationAttachment;
+}
+
 // Get all quotations
 router.get('/', authenticate, async (req, res, next) => {
   try {
@@ -91,7 +97,25 @@ router.get('/enquiry/:enquiryId', authenticate, async (req, res, next) => {
             email: true
           }
         },
-        lineItems: true
+        lineItems: true,
+        boqItems: {
+          orderBy: { srNo: 'asc' }
+        },
+        hardwareItems: {
+          orderBy: { srNo: 'asc' }
+        },
+        attachments: {
+          include: {
+            uploader: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          },
+          orderBy: { uploadedAt: 'desc' }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -578,6 +602,146 @@ router.delete('/:id', authenticate, async (req, res, next) => {
         message: 'Quotation not found'
       });
     }
+    next(error);
+  }
+});
+
+// Upload quotation attachment
+router.post('/:id/attachments', authenticate, async (req, res, next) => {
+  try {
+    const quotationAttachment = getQuotationAttachmentDelegate();
+    if (!quotationAttachment) {
+      return res.status(500).json({
+        success: false,
+        message:
+          'Quotation attachments are not available yet (Prisma client not generated / DB not migrated). Please run: npx prisma generate && npx prisma migrate dev'
+      });
+    }
+
+    const { fileName, fileUrl, fileType } = req.body;
+
+    if (!fileName || !fileUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'File name and file URL are required'
+      });
+    }
+
+    // Check if quotation exists
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!quotation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quotation not found'
+      });
+    }
+
+    const attachment = await quotationAttachment.create({
+      data: {
+        quotationId: req.params.id,
+        fileName,
+        fileUrl,
+        fileType: fileType || 'application/octet-stream',
+        uploadedBy: req.user.id
+      },
+      include: {
+        uploader: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Attachment uploaded successfully',
+      data: attachment
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get quotation attachments
+router.get('/:id/attachments', authenticate, async (req, res, next) => {
+  try {
+    const quotationAttachment = getQuotationAttachmentDelegate();
+    if (!quotationAttachment) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+
+    const attachments = await quotationAttachment.findMany({
+      where: { quotationId: req.params.id },
+      include: {
+        uploader: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { uploadedAt: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      data: attachments
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete quotation attachment
+router.delete('/attachments/:attachmentId', authenticate, async (req, res, next) => {
+  try {
+    const quotationAttachment = getQuotationAttachmentDelegate();
+    if (!quotationAttachment) {
+      return res.status(500).json({
+        success: false,
+        message:
+          'Quotation attachments are not available yet (Prisma client not generated / DB not migrated). Please run: npx prisma generate && npx prisma migrate dev'
+      });
+    }
+
+    const attachment = await quotationAttachment.findUnique({
+      where: { id: req.params.attachmentId }
+    });
+
+    if (!attachment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attachment not found'
+      });
+    }
+
+    // Check if user is the uploader or has permission (admin/director)
+    if (attachment.uploadedBy !== req.user.id && !['superadmin', 'director', 'salesman'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to delete this attachment'
+      });
+    }
+
+    await quotationAttachment.delete({
+      where: { id: req.params.attachmentId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Attachment deleted successfully'
+    });
+  } catch (error) {
     next(error);
   }
 });

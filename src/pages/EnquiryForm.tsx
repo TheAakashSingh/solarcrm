@@ -304,6 +304,7 @@ export default function EnquiryForm() {
                     placeholder="Enter amount"
                     className="input-focus"
                   />
+                  <p className="text-xs text-muted-foreground">Optional</p>
                 </div>
 
                 <div className="space-y-2">
@@ -315,6 +316,7 @@ export default function EnquiryForm() {
                     onChange={(e) => handleChange('expected_dispatch_date', e.target.value)}
                     className="input-focus"
                   />
+                  <p className="text-xs text-muted-foreground">Optional</p>
                 </div>
               </CardContent>
             </Card>
@@ -432,6 +434,7 @@ export default function EnquiryForm() {
                     rows={3}
                     className="input-focus"
                   />
+                  <p className="text-xs text-muted-foreground">Optional</p>
                 </div>
               </CardContent>
             </Card>
@@ -467,6 +470,7 @@ export default function EnquiryForm() {
                   rows={2}
                   className="input-focus"
                 />
+                <p className="text-xs text-muted-foreground">Optional</p>
               </div>
             </CardContent>
           </Card>

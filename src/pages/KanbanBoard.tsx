@@ -363,8 +363,10 @@ export default function KanbanBoard() {
             'Enquiry': ['Design', 'BOQ', 'ReadyForProduction'],
             'BOQ': ['ReadyForProduction'],
             'Design': [], // Cannot move from Design (designer returns it)
-            'ReadyForProduction': [], // Cannot move from ReadyForProduction
+            // Sales can send to Purchase after ReadyForProduction (so purchase manager can handle procurement)
+            'ReadyForProduction': ['PurchaseWaiting'],
             'PurchaseWaiting': [],
+            'PurchaseCompleted': [],
             'InProduction': [],
             'ProductionComplete': [],
             'Hotdip': [],
@@ -382,11 +384,18 @@ export default function KanbanBoard() {
         // Get users who can handle this status
         const assignableUsers = getUsersByStatus(newStatus);
         const assignedUserId = assignableUsers[0]?.id || enquiry.currentAssignedPerson || enquiry.current_assigned_person;
+
+        // For salesperson sending to purchase, ensure it's assigned to a purchase user if available
+        // (prevents enquiry getting stuck with wrong assignee)
+        const finalAssignedUserId =
+          isSalesperson && newStatus === 'PurchaseWaiting'
+            ? (assignableUsers.find((u: any) => u.role === 'purchase')?.id || assignedUserId)
+            : assignedUserId;
         
         const response = await enquiriesAPI.updateStatus(
           draggableId,
           newStatus,
-          assignedUserId,
+          finalAssignedUserId,
           `Status changed to ${newStatus}`
         );
         

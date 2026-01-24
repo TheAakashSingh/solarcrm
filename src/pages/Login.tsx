@@ -1,175 +1,121 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sun, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { usersAPI } from '@/lib/api';
 
 export default function Login() {
   const navigate = useNavigate();
   const { loginWithEmail, currentUser } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [demoUsers, setDemoUsers] = useState<any[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch demo users for quick login
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await usersAPI.getAll();
-        if (response.success && response.data) {
-          setDemoUsers(Array.isArray(response.data) ? response.data.slice(0, 3) : []);
-        } else if (!response.success && response.message?.includes('Could not connect')) {
-          // Backend not running - silently fail, user can still login manually
-          console.warn('Backend not available - demo users not loaded');
-        }
-      } catch (error) {
-        // Silently fail - backend might not be running yet
-        console.warn('Failed to fetch users (backend may not be running):', error);
-      }
-    };
-    fetchUsers();
-  }, []);
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (currentUser) {
-      navigate('/');
-    }
+    if (currentUser) navigate('/');
   }, [currentUser, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email.trim()) {
-      toast.error('Please enter your email');
+    if (!email || !password) {
+      toast.error('Email and password are required');
       return;
     }
 
-    if (!password.trim()) {
-      toast.error('Please enter your password');
-      return;
-    }
+    setLoading(true);
+    const success = await loginWithEmail(email, password);
+    setLoading(false);
 
-    setIsLoading(true);
-    
-    try {
-      const success = await loginWithEmail(email, password);
-      if (success) {
-        toast.success(`Welcome back, ${currentUser?.name || 'User'}!`);
-        navigate('/');
-      } else {
-        toast.error('Invalid email or password');
-      }
-    } catch (error) {
-      toast.error('Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    success ? navigate('/') : toast.error('Invalid credentials');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 p-4">
-      <Card className="w-full max-w-md shadow-2xl">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <img 
-              src="/sunshellconnect.png" 
-              alt="SUNSHELL Connect" 
-              className="h-20 w-auto object-contain"
+    <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB] px-4">
+      <Card className="w-full max-w-md border border-[#E5E7EB] shadow-lg rounded-xl">
+        <CardContent className="p-8 space-y-6">
+          {/* Logo */}
+          <div className="text-center space-y-2">
+            <img
+              src="/sunshellconnect.png"
+              alt="SunshellConnect"
+              className="h-14 mx-auto"
             />
+            <h1 className="text-2xl font-semibold text-[#1F2937]">
+              Sign in to SunshellConnect
+            </h1>
+            <p className="text-sm text-[#6B7280]">
+              Access your CRM dashboard
+            </p>
           </div>
-          <CardTitle className="text-2xl font-bold">SolarSync CRM</CardTitle>
-          <CardDescription>
-            Sign in to your account to continue
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            {/* Email */}
+            <div className="space-y-1">
+              <Label className="text-sm text-[#374151]">Email address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-[#9CA3AF]" />
                 <Input
-                  id="email"
                   type="email"
                   placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9"
-                  disabled={isLoading}
+                  className="pl-9 border-[#E5E7EB] focus:ring-2 focus:ring-[#0B5ED7]"
                 />
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+
+            {/* Password */}
+            <div className="space-y-1">
+              <Label className="text-sm text-[#374151]">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-[#9CA3AF]" />
                 <Input
-                  id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9"
-                  disabled={isLoading}
+                  className="pl-9 pr-10 border-[#E5E7EB] focus:ring-2 focus:ring-[#0B5ED7]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-[#6B7280]"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
-              <p className="text-xs text-blue-800">
-                <strong>Default Password:</strong> password123 (for all demo users)
-              </p>
+            {/* Forgot */}
+            <div className="text-right text-sm">
+              <a href="/forgot-password" className="text-[#0B5ED7] hover:underline">
+                Forgot password?
+              </a>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              size="lg"
-              disabled={isLoading}
+            {/* Button */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#0B5ED7] hover:bg-[#094DB1] text-white rounded-lg text-base"
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in…' : 'Sign In'}
             </Button>
           </form>
 
-          {demoUsers.length > 0 && (
-            <div className="mt-6 pt-6 border-t">
-              <p className="text-sm text-center text-muted-foreground mb-3">
-                Quick Login:
-              </p>
-              <div className="space-y-2">
-                {demoUsers.map((user) => (
-                  <Button
-                    key={user.id}
-                    variant="outline"
-                    className="w-full justify-start text-sm"
-                    onClick={() => {
-                      setEmail(user.email);
-                      setPassword('password123');
-                    }}
-                    disabled={isLoading}
-                  >
-                    <Mail className="h-3 w-3 mr-2" />
-                    {user.email} ({user.role})
-                  </Button>
-                ))}
-              </div>
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                Default password: password123
-              </p>
-            </div>
-          )}
+          {/* Footer */}
+          <p className="text-xs text-center text-[#9CA3AF]">
+            © {new Date().getFullYear()} SunshellConnect. All rights reserved.
+          </p>
         </CardContent>
       </Card>
     </div>
   );
 }
-

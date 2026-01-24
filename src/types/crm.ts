@@ -6,6 +6,7 @@ export type EnquiryStatus =
   | 'BOQ'
   | 'ReadyForProduction'
   | 'PurchaseWaiting'
+  | 'PurchaseCompleted'
   | 'InProduction'
   | 'ProductionComplete'
   | 'Hotdip'
@@ -158,6 +159,7 @@ export const STATUS_LIST: EnquiryStatus[] = [
   'BOQ',
   'ReadyForProduction',
   'PurchaseWaiting',
+  'PurchaseCompleted',
   'InProduction',
   'ProductionComplete',
   'Hotdip',
@@ -173,6 +175,7 @@ export const STATUS_COLORS: Record<EnquiryStatus, string> = {
   'BOQ': 'status-boq',
   'ReadyForProduction': 'status-ready-production',
   'PurchaseWaiting': 'status-purchase',
+  'PurchaseCompleted': 'status-purchase-completed',
   'InProduction': 'status-in-production',
   'ProductionComplete': 'status-production-complete',
   'Hotdip': 'status-hotdip',
@@ -186,7 +189,7 @@ export const ROLE_STATUS_MAPPING: Record<UserRole, EnquiryStatus[]> = {
   'salesman': STATUS_LIST, // Salesperson has access to all statuses to manage workflow
   'designer': ['Design'],
   'production': ['ReadyForProduction', 'InProduction', 'ProductionComplete', 'Hotdip', 'ReadyForDispatch', 'Dispatched'],
-  'purchase': ['PurchaseWaiting']
+  'purchase': ['PurchaseWaiting', 'PurchaseCompleted'] // Purchase manager can mark purchase as completed
 };
 
 // Role hierarchy - who can manage whom

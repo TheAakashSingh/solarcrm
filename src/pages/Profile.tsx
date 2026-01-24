@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
-import { usersAPI } from '@/lib/api';
+import { usersAPI, authAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { User, Camera, Mail, Save, X } from 'lucide-react';
+import { User, Camera, Mail, Save, X, Lock, KeyRound } from 'lucide-react';
 
 export default function Profile() {
   const { currentUser, setCurrentUser } = useAuth();
@@ -303,6 +304,22 @@ export default function Profile() {
           </CardContent>
         </Card>
 
+        {/* Password Change Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-orange-600" />
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Update your password to keep your account secure
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PasswordChangeForm />
+          </CardContent>
+        </Card>
+
         {/* Additional Info Card */}
         <Card>
           <CardHeader>
@@ -334,3 +351,143 @@ export default function Profile() {
   );
 }
 
+function PasswordChangeForm() {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('All fields are required');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      toast.error('New password must be different from current password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await authAPI.changePassword(currentPassword, newPassword);
+      if (response.success) {
+        toast.success('Password changed successfully');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        toast.error(response.message || 'Failed to change password');
+      }
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="currentPassword">
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-gray-400" />
+            Current Password
+          </div>
+        </Label>
+        <div className="relative">
+          <Input
+            id="currentPassword"
+            type={showPasswords.current ? 'text' : 'password'}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Enter your current password"
+            required
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            {showPasswords.current ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <Label htmlFor="newPassword">New Password</Label>
+        <div className="relative">
+          <Input
+            id="newPassword"
+            type={showPasswords.new ? 'text' : 'password'}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Enter new password (min 6 characters)"
+            required
+            minLength={6}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            {showPasswords.new ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">Must be at least 6 characters long</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">Confirm New Password</Label>
+        <div className="relative">
+          <Input
+            id="confirmPassword"
+            type={showPasswords.confirm ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm new password"
+            required
+            minLength={6}
+            className="pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            {showPasswords.confirm ? '👁️' : '👁️‍🗨️'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-2">
+        <Button type="submit" disabled={loading}>
+          <Lock className="h-4 w-4 mr-2" />
+          {loading ? 'Changing...' : 'Change Password'}
+        </Button>
+      </div>
+    </form>
+  );
+}

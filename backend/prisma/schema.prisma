@@ -25,6 +25,7 @@ enum EnquiryStatus {
   BOQ
   ReadyForProduction
   PurchaseWaiting
+  PurchaseCompleted
   InProduction
   ProductionComplete
   Hotdip
@@ -114,6 +115,7 @@ model User {
   dispatchWorks        DispatchWork[]
   statusHistories      EnquiryStatusHistory[]
   quotationsCreated    Quotation[]
+  quotationAttachments  QuotationAttachment[] @relation("QuotationAttachmentUploader")
   invoicesCreated      Invoice[]
   smtpConfigsCreated   SmtpConfig[]  @relation("SmtpConfigCreator")
   enquiryNotes         EnquiryNote[]
@@ -388,11 +390,29 @@ model Quotation {
   boqItems      QuotationBoqItem[]
   hardwareItems QuotationHardwareItem[]
   invoices      Invoice[]       @relation("QuotationInvoices")
+  attachments   QuotationAttachment[]
 
   @@index([enquiryId])
   @@index([clientId])
   @@index([number])
   @@index([status])
+}
+
+model QuotationAttachment {
+  id          String   @id @default(uuid())
+  quotationId String
+  fileName    String
+  fileUrl     String   @db.Text
+  fileType    String
+  uploadedBy  String
+  uploadedAt  DateTime @default(now())
+
+  // Relations
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  uploader    User      @relation("QuotationAttachmentUploader", fields: [uploadedBy], references: [id])
+
+  @@index([quotationId])
+  @@index([uploadedBy])
 }
 
 model QuotationLineItem {

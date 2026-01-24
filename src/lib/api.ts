@@ -113,6 +113,13 @@ export const authAPI = {
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   },
+  
+  resetPassword: async (email: string, newPassword: string) => {
+    return apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, newPassword }),
+    });
+  },
 };
 
 // Users API
@@ -558,6 +565,26 @@ export const dispatchAPI = {
 
 // Quotations API
 export const quotationsAPI = {
+  uploadAttachment: async (quotationId: string, attachmentData: {
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+  }) => {
+    return apiRequest(`/quotations/${quotationId}/attachments`, {
+      method: 'POST',
+      body: JSON.stringify(attachmentData),
+    });
+  },
+  
+  getAttachments: async (quotationId: string) => {
+    return apiRequest(`/quotations/${quotationId}/attachments`);
+  },
+  
+  deleteAttachment: async (attachmentId: string) => {
+    return apiRequest(`/quotations/attachments/${attachmentId}`, {
+      method: 'DELETE',
+    });
+  },
   getAll: async (params?: {
     search?: string;
     status?: string;
