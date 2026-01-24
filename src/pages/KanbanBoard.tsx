@@ -306,7 +306,7 @@ export default function KanbanBoard() {
           draggableId,
           newStatus,
           salespersonId,
-          `Task returned to salesperson`
+          undefined
         );
         
         if (response.success) {
@@ -341,7 +341,7 @@ export default function KanbanBoard() {
             draggableId,
             newStatus,
             currentAssignedPerson,
-            `Status changed to ${newStatus}`
+            undefined
           );
           
           if (response.success) {
@@ -396,7 +396,7 @@ export default function KanbanBoard() {
           draggableId,
           newStatus,
           finalAssignedUserId,
-          `Status changed to ${newStatus}`
+          undefined
         );
         
         if (response.success) {
